@@ -1,0 +1,23 @@
+@startuml DSS03P
+title DSS03P - Gestionar perfil
+
+actor Pasajero
+participant "Sistema" as Sistema
+
+Pasajero -> Sistema: Seleccionar gestión de perfil
+Sistema -> Pasajero: Mostrar información del perfil
+
+Pasajero -> Sistema: Solicitar modificación de datos
+Sistema -> Pasajero: Solicitar nuevos datos
+
+Pasajero -> Sistema: Ingresar nuevos datos
+Sistema -> Sistema: Validar información
+
+alt Datos válidos
+    Sistema -> Sistema: Actualizar perfil
+    Sistema -> Pasajero: Confirmar actualización
+else Datos inválidos
+    Sistema -> Pasajero: Mostrar mensaje de error
+end
+
+@enduml

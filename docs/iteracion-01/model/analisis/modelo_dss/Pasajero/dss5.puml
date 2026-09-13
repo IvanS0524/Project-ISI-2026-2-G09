@@ -1,0 +1,21 @@
+@startuml DSS05P
+title DSS05P - Seleccionar oferta
+
+actor Pasajero
+participant "Sistema" as Sistema
+
+Pasajero -> Sistema: Seleccionar una oferta
+Sistema -> Sistema: Consultar detalle de la oferta
+Sistema -> Pasajero: Mostrar precio, ruta y condiciones
+
+Pasajero -> Sistema: Confirmar oferta seleccionada
+Sistema -> Sistema: Validar disponibilidad de la oferta
+
+alt Oferta disponible
+	Sistema -> Sistema: Registrar selección
+	Sistema -> Pasajero: Confirmar oferta seleccionada
+else Oferta no disponible
+	Sistema -> Pasajero: Informar que la oferta ya no está disponible
+end
+
+@enduml

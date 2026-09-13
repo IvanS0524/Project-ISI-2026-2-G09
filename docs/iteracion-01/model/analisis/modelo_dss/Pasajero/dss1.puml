@@ -1,0 +1,20 @@
+@startuml DSS01P
+title DSS01P - Registrarse
+
+actor Pasajero
+participant "Sistema" as Sistema
+
+Pasajero -> Sistema: Seleccionar registrarse
+Sistema -> Pasajero: Solicitar datos de registro
+
+Pasajero -> Sistema: Ingresar datos personales
+Sistema -> Sistema: Validar datos
+
+alt Datos válidos
+    Sistema -> Sistema: Registrar usuario
+    Sistema -> Pasajero: Confirmar registro exitoso
+else Datos inválidos
+    Sistema -> Pasajero: Mostrar mensaje de error
+end
+
+@enduml
