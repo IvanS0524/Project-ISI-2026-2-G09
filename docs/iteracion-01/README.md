@@ -1,6 +1,6 @@
 # Iteración 01
 
-Esta carpeta contiene la documentación y los modelos de análisis correspondientes a la primera iteración del proyecto **Plataforma Inteligente de Recomendación de Transporte para Cartagena (UnixDriver)**.
+Esta carpeta contiene la documentación y los modelos de análisis correspondientes a la primera iteración del proyecto **Plataforma de búsqueda unificada de transporte (UnixDriver)**.
 
 ## Objetivo
 
