@@ -1,0 +1,26 @@
+@startuml SD01
+title Diagrama de Secuencia - Registrarse
+
+actor Pasajero
+boundary Interfaz
+control "Sistema UnixDriver" as Sistema
+database "Base de Datos" as BD
+
+Pasajero -> Interfaz: ingresarDatos(nombre, correo, contraseña, telefono)
+Interfaz -> Sistema: solicitarRegistro(datos)
+Sistema -> Sistema: validarDatos()
+Sistema -> BD: consultarCorreo(correo)
+BD --> Sistema: resultadoConsulta
+
+alt Correo ya registrado
+    Sistema --> Interfaz: mostrarError("Correo ya registrado")
+    Interfaz --> Pasajero: solicitar otro correo
+else Correo disponible
+    Sistema -> Sistema: cifrarContraseña()
+    Sistema -> BD: guardarUsuario(datos)
+    BD --> Sistema: registro exitoso
+    Sistema --> Interfaz: confirmarRegistro()
+    Interfaz --> Pasajero: mostrar mensaje de éxito
+end
+
+@enduml
