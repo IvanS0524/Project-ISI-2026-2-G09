@@ -1,0 +1,23 @@
+@startuml SD04A
+title Diagrama de Secuencia - Consultar reportes y estadísticas
+
+actor Administrador
+boundary Interfaz
+control "Sistema UnixDriver" as Sistema
+database "Base de Datos" as BD
+
+Administrador -> Interfaz: seleccionarTipoYFechas(tipo, rango)
+Interfaz -> Sistema: solicitarReporte(tipo, rango)
+Sistema -> BD: consultarDatos(tipo, rango)
+BD --> Sistema: datos del periodo
+Sistema -> Sistema: consolidarEstadisticas()
+
+alt Hay datos para el periodo
+    Sistema --> Interfaz: mostrarReporte(reporte)
+    Interfaz --> Administrador: mostrar gráfico o resumen
+else No hay datos
+    Sistema --> Interfaz: mostrarAviso("No hay datos para el periodo")
+    Interfaz --> Administrador: informar que no hay datos
+end
+
+@enduml
