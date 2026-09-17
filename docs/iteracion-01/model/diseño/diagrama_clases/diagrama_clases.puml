@@ -1,0 +1,217 @@
+@startuml
+title Diagrama de Clases - UnixDriver
+
+skinparam classAttributeIconSize 0
+
+'========================
+' USUARIOS
+'========================
+
+abstract class Usuario {
+    - idUsuario: int
+    - nombre: String
+    - correo: String
+    - contrasena: String
+    - telefono: String
+    --
+    + registrarse(): String
+    + iniciarSesion(): boolean
+    + cerrarSesion(): void
+    + actualizarPerfil(): void
+}
+
+class Pasajero {
+    --
+    + realizarBusqueda(): BusquedaUnificada
+    + seleccionarOpcion(opcion: OpcionTransporte): Viaje
+    + consultarViajes(): List<Viaje>
+    + cancelarViaje(viaje: Viaje): void
+}
+
+class Administrador {
+    --
+    + gestionarUsuarios(): void
+    + gestionarPlataformas(): void
+    + crearConfiguracionComision(): void
+    + modificarConfiguracionComision(): void
+    + desactivarConfiguracionComision(): void
+    + generarReportes(): void
+}
+
+Usuario <|-- Pasajero
+Usuario <|-- Administrador
+
+'========================
+' BUSQUEDA Y RESULTADOS
+'========================
+
+class BusquedaUnificada {
+    - idBusqueda: int
+    - origen: String
+    - destino: String
+    - fechaHora: DateTime
+    - estado: EstadoBusqueda
+    --
+    + validarDatos(): boolean
+    + consultarOpciones(): List<OpcionTransporte>
+    + obtenerResultados(): List<OpcionTransporte>
+    + cancelarBusqueda(): void
+}
+
+class OpcionTransporte {
+    - idOpcion: int
+    - precioEstimado: Decimal
+    - tiempoEstimado: int
+    - distancia: Decimal
+    - estado: EstadoOpcion
+    --
+    + consultarDetalles(): void
+    + seleccionar(): void
+    + compararPrecio(): Decimal
+}
+
+Pasajero "1" -- "0..*" BusquedaUnificada : realiza >
+BusquedaUnificada "1" *-- "1..*" OpcionTransporte : genera >
+
+'========================
+' PLATAFORMAS EXTERNAS
+'========================
+
+class Plataforma {
+    - idPlataforma: int
+    - nombre: String
+    - estado: EstadoPlataforma
+    --
+    + consultarServicio(): void
+    + recibirSolicitud(): void
+    + enviarRespuesta(): void
+    + verificarDisponibilidad(): boolean
+}
+
+Plataforma "1" -- "0..*" OpcionTransporte : ofrece >
+
+'========================
+' CONDUCTOR Y VEHICULO
+'========================
+
+class Conductor {
+    - idConductor: int
+    - nombre: String
+    - calificacion: Decimal
+    - telefono: String
+    --
+    + consultarPerfil(): void
+    + consultarCalificacion(): Decimal
+}
+
+class Vehiculo {
+    - idVehiculo: int
+    - placa: String
+    - marca: String
+    - modelo: String
+    - tipo: String
+    --
+    + consultarDetalles(): void
+}
+
+OpcionTransporte "0..*" --> "0..1" Conductor : asigna >
+OpcionTransporte "0..*" --> "0..1" Vehiculo : utiliza >
+
+'========================
+' VIAJE
+'========================
+
+class Viaje {
+    - idViaje: int
+    - fechaHoraInicio: DateTime
+    - fechaHoraFin: DateTime
+    - precioFinal: Decimal
+    - estado: EstadoViaje
+    --
+    + iniciarViaje(): void
+    + finalizarViaje(): void
+    + cancelarViaje(): void
+    + consultarEstado(): EstadoViaje
+}
+
+Pasajero "1" -- "0..*" Viaje : realiza >
+OpcionTransporte "1" --> "0..1" Viaje : seleccionada para >
+
+'========================
+' CONFIGURACION DE COMISION
+'========================
+
+class ConfiguracionComision {
+    - idConfiguracion: int
+    - porcentaje: Decimal
+    - fechaInicio: DateTime
+    - fechaFin: DateTime
+    - estado: EstadoConfiguracion
+    --
+    + activar(): void
+    + desactivar(): void
+    + modificarPorcentaje(): void
+}
+
+Administrador "1" -- "0..*" ConfiguracionComision : administra >
+
+'========================
+' COMISION
+'========================
+
+class Comision {
+    - idComision: int
+    - idViaje: int
+    - idConfiguracion: int
+    - porcentajeAplicado: Decimal
+    - monto: Decimal
+    - fechaGeneracion: DateTime
+    - estado: EstadoComision
+    --
+    + calcularComision(): Decimal
+    + registrarComision(): void
+}
+
+Viaje "1" -- "0..1" Comision : genera >
+ConfiguracionComision "1" -- "0..*" Comision : se aplica en >
+
+'========================
+' ENUMERACIONES
+'========================
+
+enum EstadoBusqueda {
+    PENDIENTE
+    COMPLETADA
+    CANCELADA
+}
+
+enum EstadoOpcion {
+    DISPONIBLE
+    SELECCIONADA
+    NO_DISPONIBLE
+}
+
+enum EstadoPlataforma {
+    ACTIVA
+    INACTIVA
+}
+
+enum EstadoViaje {
+    SOLICITADO
+    EN_CURSO
+    FINALIZADO
+    CANCELADO
+}
+
+enum EstadoComision {
+    PENDIENTE
+    PROCESADA
+    CANCELADA
+}
+
+enum EstadoConfiguracion {
+    ACTIVA
+    INACTIVA
+}
+
+@enduml
