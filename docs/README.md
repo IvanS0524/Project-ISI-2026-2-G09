@@ -4,9 +4,10 @@ Esta carpeta contiene la documentación y los entregables correspondientes a las
 
 ## Estructura
 
-- `iteracion-01/` — Documentación de la primera iteración.
+- [iteracion-01/](iteracion-01/README.md) — Análisis, diseño del proyecto
 - `iteracion-02/` — Documentación de la segunda iteración.
 - `iteracion-03/` — Documentación de la tercera iteración.
 - `iteracion-final/` — Documentación correspondiente a la entrega final.
 
-Cada iteración deberá contener los documentos y evidencias solicitados por el docente.
+Las iteraciones 02, 03 y final se mantienen como espacios de documentación
+pendiente hasta que se incorporen sus entregables.
