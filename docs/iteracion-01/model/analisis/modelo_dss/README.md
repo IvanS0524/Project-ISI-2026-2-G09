@@ -2,7 +2,11 @@
 
 Esta carpeta contiene los Diagramas de Secuencia del Sistema (DSS) para los
 principales flujos de Pasajero y Administrador definidos en el análisis de la
-iteración 01.
+iteración 01. Son diagramas de caja negra: muestran los mensajes entre el actor
+y el sistema, sin detallar componentes internos.
+
+Los diagramas de secuencia de diseño derivados están en
+[../../diseño/diagramas_secuencia/](../../diseño/diagramas_secuencia/README.md).
 
 ## Estructura
 
@@ -10,7 +14,9 @@ iteración 01.
 - `Administrador/`: diagramas de secuencia para los casos de uso del rol administrador.
 ## Objetivo
 
-Los diagramas describen la interacción entre el actor y el sistema, mostrando el orden de los mensajes, validaciones, decisiones y resultados esperados para cada proceso principal.
+Los diagramas describen la interacción entre el actor y el sistema, mostrando el
+orden de los mensajes, las respuestas, las decisiones observables y los resultados
+esperados para cada proceso principal.
 
 ## Diagramas de Pasajero
 
@@ -39,8 +45,10 @@ Los DSS están representados con PlantUML y siguen el formato estándar de secue
 
 ## Estado
 
-Los diagramas actuales complementan el análisis funcional y sirven como base
-para validar el comportamiento de los flujos de Pasajero y Administrador.
+Los diez DSS actuales complementan el análisis funcional y sirven como base para
+validar el comportamiento de los flujos de Pasajero y Administrador. La
+integración con plataformas externas se detalla en el diagrama de diseño de
+búsqueda unificada.
 
 
 ```text

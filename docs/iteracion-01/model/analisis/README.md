@@ -1,8 +1,12 @@
 # Análisis
 
-Esta carpeta reúne los artefactos de análisis funcional de la iteración 01,
-el diagrama general de casos de uso y los Diagramas de Secuencia del Sistema
+Esta carpeta reúne los artefactos de análisis funcional de la Iteración 01,
+incluyendo el diagrama general de casos de uso y los Diagramas de Secuencia del Sistema
 (DSS) asociados a los actores definidos.
+
+Los diagramas de secuencia de diseño, que detallan la interacción entre los
+componentes internos del sistema, se encuentran en
+[diseño/diagramas_secuencia](../diseño/diagramas_secuencia/README.md).
 
 ## Modelo de dominio
 
@@ -48,8 +52,15 @@ Actor principal encargado de gestionar usuarios, configurar la comisión del ser
 
 Actor secundario que representa las plataformas externas de transporte, como Uber, DiDi e inDrive. Estas proporcionan información sobre las ofertas disponibles para la búsqueda unificada.
 
-## Alcance actual
+## Relación con el diseño
 
-En esta iteración se incluyen el modelo de dominio, el diagrama general de casos de uso y los DSS del Pasajero y del Administrador.
+Los DSS documentan el comportamiento observable del sistema desde la perspectiva
+del actor. Los diagramas de secuencia de diseño desarrollan estos flujos mostrando
+la colaboración entre los componentes internos de UnixDriver, incluyendo la
+interfaz, los servicios, la persistencia y otros componentes cuando corresponda.
 
-La integración con plataformas externas se encuentra definida conceptualmente en el modelo de dominio y en el diagrama de casos de uso. Los flujos de comunicación con dichas plataformas aún no cuentan con DSS almacenados en esta carpeta.
+La integración con Uber, DiDi e inDrive se representa directamente en el diseño
+del caso de uso de búsqueda unificada.
+
+El diagrama de clases y el modelo entidad-relación utilizados como referencia
+se encuentran disponibles en [diseño/README.md](../diseño/README.md).
