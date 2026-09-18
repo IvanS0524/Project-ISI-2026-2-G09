@@ -4,7 +4,7 @@ Esta carpeta contiene la documentación y los modelos de análisis correspondien
 
 ## Objetivo
 
-Definir los actores, requisitos funcionales y flujos principales del sistema antes de iniciar la etapa de diseño y construcción de la aplicación. En esta iteración se modelan las interacciones del Pasajero y del Administrador con la plataforma.
+Definir los actores, requisitos funcionales, conceptos principales del dominio y diseño estructural del sistema antes de iniciar la etapa de construcción de la aplicación. En esta iteración se modelan las interacciones del Pasajero y del Administrador con la plataforma y se establecen los principales componentes y estructuras del sistema.
 
 ## Entregables
 
@@ -20,6 +20,12 @@ Los DSS se encuentran organizados por actor y describen las interacciones entre 
 
 * [DSS del Pasajero](model/analisis/modelo_dss/Pasajero/): Seis diagramas de secuencia del sistema.
 * [DSS del Administrador](model/analisis/modelo_dss/Administrador/): Cuatro diagramas de secuencia del sistema.
+
+### 3. Diseño
+
+* [Diagrama de clases](model/diseño/diagrama_clases/diagrama_clases.puml): Responsabilidades y relaciones del dominio.
+* [Modelo entidad-relación](model/diseño/modelo_er/diagrama_er.puml): Estructura de persistencia propuesta.
+* [Diagramas de secuencia](model/diseño/diagramas_secuencia/README.md): Diez diagramas que detallan la colaboración interna de los casos de uso.
 
 ## Alcance funcional
 
@@ -55,3 +61,5 @@ Los DSS se encuentran organizados por actor y describen las interacciones entre 
 * [x] Diagrama general de casos de uso.
 * [x] DSS del Pasajero.
 * [x] DSS del Administrador.
+* [x] Diagrama de clases y modelo entidad-relación.
+* [x] Diagramas de secuencia de diseño.
