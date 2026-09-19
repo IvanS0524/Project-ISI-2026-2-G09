@@ -10,7 +10,7 @@ Sistema -> Sistema: Validar datos de búsqueda
 alt Datos válidos
     Pasajero -> Sistema: Iniciar búsqueda
     Sistema -> Sistema: Procesar solicitud de transporte
-    Sistema -> Sistema: Consultar plataformas de transporte\n(Uber, DiDi, InDriver)
+    Sistema -> Sistema: Consultar plataformas de transporte\n(Uber, DiDi, inDriver)
     Sistema -> Sistema: Organizar alternativas recibidas
     Sistema --> Pasajero: Mostrar alternativas disponibles
 else Datos inválidos
