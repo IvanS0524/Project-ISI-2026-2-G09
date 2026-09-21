@@ -1,0 +1,111 @@
+@startuml
+title Modelo Entidad-Relación - UnixDriver
+
+hide circle
+skinparam linetype ortho
+
+entity USUARIO {
+    * id_usuario : INT <<PK>>
+    --
+    nombre : VARCHAR(100)
+    correo : VARCHAR(150) <<UNIQUE>>
+    contrasena : VARCHAR(255)
+    telefono : VARCHAR(20)
+    rol : VARCHAR(20)
+}
+
+entity PLATAFORMA {
+    * id_plataforma : INT <<PK>>
+    --
+    nombre : VARCHAR(50)
+    estado : VARCHAR(20)
+}
+
+entity BUSQUEDA {
+    * id_busqueda : INT <<PK>>
+    --
+    origen : VARCHAR(255)
+    destino : VARCHAR(255)
+    fecha_hora : DATETIME
+    estado : VARCHAR(20)
+    id_usuario : INT <<FK>>
+}
+
+entity OPCION_TRANSPORTE {
+    * id_opcion : INT <<PK>>
+    --
+    precio_estimado : DECIMAL(10,2)
+    tiempo_estimado : INT
+    distancia : DECIMAL(10,2)
+    estado : VARCHAR(20)
+    id_busqueda : INT <<FK>>
+    id_plataforma : INT <<FK>>
+    id_conductor : INT <<FK>>
+    id_vehiculo : INT <<FK>>
+}
+
+entity CONDUCTOR {
+    * id_conductor : INT <<PK>>
+    --
+    nombre : VARCHAR(100)
+    calificacion : DECIMAL(3,2)
+    telefono : VARCHAR(20)
+}
+
+entity VEHICULO {
+    * id_vehiculo : INT <<PK>>
+    --
+    placa : VARCHAR(10) <<UNIQUE>>
+    marca : VARCHAR(50)
+    modelo : VARCHAR(50)
+    tipo : VARCHAR(50)
+}
+
+entity VIAJE {
+    * id_viaje : INT <<PK>>
+    --
+    fecha_hora_inicio : DATETIME
+    fecha_hora_fin : DATETIME
+    precio_final : DECIMAL(10,2)
+    estado : VARCHAR(20)
+    id_usuario : INT <<FK>>
+    id_opcion : INT <<FK>>
+}
+
+entity CONFIGURACION_COMISION {
+    * id_configuracion : INT <<PK>>
+    --
+    porcentaje : DECIMAL(5,2)
+    fecha_inicio : DATETIME
+    fecha_fin : DATETIME
+    estado : VARCHAR(20)
+    id_administrador : INT <<FK>>
+}
+
+entity COMISION {
+    * id_comision : INT <<PK>>
+    --
+    porcentaje_aplicado : DECIMAL(5,2)
+    monto : DECIMAL(10,2)
+    fecha_generacion : DATETIME
+    estado : VARCHAR(20)
+    id_viaje : INT <<FK>>
+    id_configuracion : INT <<FK>>
+}
+
+USUARIO ||--o{ BUSQUEDA : realiza
+USUARIO ||--o{ VIAJE : realiza
+
+BUSQUEDA ||--|{ OPCION_TRANSPORTE : genera
+PLATAFORMA ||--o{ OPCION_TRANSPORTE : ofrece
+
+CONDUCTOR ||--o{ OPCION_TRANSPORTE : aparece_en
+VEHICULO ||--o{ OPCION_TRANSPORTE : aparece_en
+
+OPCION_TRANSPORTE ||--o| VIAJE : seleccionada_para
+
+USUARIO ||--o{ CONFIGURACION_COMISION : administra
+CONFIGURACION_COMISION ||--o{ COMISION : establece
+VIAJE ||--o| COMISION : genera
+
+@enduml

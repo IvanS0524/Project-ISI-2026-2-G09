@@ -1,0 +1,31 @@
+@startuml SD05
+title Diagrama de Secuencia - Seleccionar oferta
+
+actor Pasajero
+boundary Interfaz
+control "Sistema UnixDriver" as Sistema
+database "Base de Datos" as BD
+
+Pasajero -> Interfaz: seleccionarOferta(idOferta)
+Interfaz -> Sistema: consultarOferta(idOferta)
+Sistema -> BD: consultarOferta(idOferta)
+BD --> Sistema: datos de la oferta
+Sistema --> Interfaz: mostrarDetalles(oferta)
+Interfaz --> Pasajero: mostrar precio y condiciones
+
+Pasajero -> Interfaz: confirmarOferta()
+Interfaz -> Sistema: solicitarViaje(idOferta)
+Sistema -> BD: verificarDisponibilidad(idOferta)
+BD --> Sistema: disponibilidad
+
+alt Oferta disponible
+    Sistema -> BD: guardarViaje(idOferta)
+    BD --> Sistema: viaje registrado
+    Sistema --> Interfaz: confirmarViaje()
+    Interfaz --> Pasajero: mostrar viaje solicitado
+else Oferta no disponible
+    Sistema --> Interfaz: mostrarError("Oferta no disponible")
+    Interfaz --> Pasajero: solicitar otra oferta
+end
+
+@enduml

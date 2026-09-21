@@ -1,0 +1,28 @@
+@startuml SD06
+title Diagrama de Secuencia - Consultar historial
+
+actor Pasajero
+boundary Interfaz
+control "Sistema UnixDriver" as Sistema
+database "Base de Datos" as BD
+
+Pasajero -> Interfaz: solicitarHistorial()
+Interfaz -> Sistema: consultarHistorial(idPasajero)
+Sistema -> BD: consultarViajes(idPasajero)
+BD --> Sistema: viajes ordenados por fecha
+
+alt Existen viajes registrados
+    Sistema --> Interfaz: mostrarHistorial(viajes)
+    Interfaz --> Pasajero: mostrar viajes
+    Pasajero -> Interfaz: seleccionarViaje(idViaje)
+    Interfaz -> Sistema: consultarDetalle(idViaje)
+    Sistema -> BD: consultarDetalle(idViaje)
+    BD --> Sistema: detalle del viaje
+    Sistema --> Interfaz: mostrarDetalle(detalle)
+    Interfaz --> Pasajero: mostrar detalle
+else Historial vacío
+    Sistema --> Interfaz: mostrarAviso("No hay viajes registrados")
+    Interfaz --> Pasajero: informar historial vacío
+end
+
+@enduml

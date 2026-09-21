@@ -1,0 +1,20 @@
+@startuml DSS04P
+title DSS04P - Realizar búsqueda unificada de transporte
+
+actor "Pasajero" as Pasajero
+participant "Sistema" as Sistema
+
+Pasajero -> Sistema: Ingresar origen y destino
+Sistema -> Sistema: Validar datos de búsqueda
+
+alt Datos válidos
+    Pasajero -> Sistema: Iniciar búsqueda
+    Sistema -> Sistema: Procesar solicitud de transporte
+    Sistema -> Sistema: Consultar plataformas de transporte\n(Uber, DiDi, inDriver)
+    Sistema -> Sistema: Organizar alternativas recibidas
+    Sistema --> Pasajero: Mostrar alternativas disponibles
+else Datos inválidos
+    Sistema --> Pasajero: Mostrar mensaje de error
+end
+
+@enduml

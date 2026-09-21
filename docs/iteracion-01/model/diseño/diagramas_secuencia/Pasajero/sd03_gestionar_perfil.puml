@@ -1,0 +1,30 @@
+@startuml SD03
+title Diagrama de Secuencia - Gestionar perfil
+
+actor Pasajero
+boundary Interfaz
+control "Sistema UnixDriver" as Sistema
+database "Base de Datos" as BD
+
+Pasajero -> Interfaz: solicitarPerfil()
+Interfaz -> Sistema: consultarPerfil(idPasajero)
+Sistema -> BD: consultarUsuario(idPasajero)
+BD --> Sistema: datos del perfil
+Sistema --> Interfaz: mostrarPerfil(datos)
+Interfaz --> Pasajero: mostrar datos actuales
+
+Pasajero -> Interfaz: ingresarCambios(datos)
+Interfaz -> Sistema: actualizarPerfil(datos)
+Sistema -> Sistema: validarDatos()
+
+alt Datos válidos
+    Sistema -> BD: guardarCambios(datos)
+    BD --> Sistema: actualización exitosa
+    Sistema --> Interfaz: confirmarActualización()
+    Interfaz --> Pasajero: mostrar cambios guardados
+else Datos inválidos
+    Sistema --> Interfaz: mostrarError("Datos inválidos")
+    Interfaz --> Pasajero: solicitar corrección
+end
+
+@enduml

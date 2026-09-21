@@ -1,0 +1,23 @@
+@startuml SD02
+title Diagrama de Secuencia - Iniciar sesión del pasajero
+
+actor Pasajero
+boundary Interfaz
+control "Sistema UnixDriver" as Sistema
+database "Base de Datos" as BD
+
+Pasajero -> Interfaz: ingresarCredenciales(correo, contraseña)
+Interfaz -> Sistema: solicitarInicioSesion(credenciales)
+Sistema -> Sistema: validarCredenciales()
+Sistema -> BD: consultarUsuario(correo)
+BD --> Sistema: usuario o vacío
+
+alt Credenciales válidas
+    Sistema --> Interfaz: iniciarSesion(token)
+    Interfaz --> Pasajero: mostrar pantalla principal
+else Credenciales inválidas
+    Sistema --> Interfaz: mostrarError("Credenciales inválidas")
+    Interfaz --> Pasajero: solicitar nuevamente las credenciales
+end
+
+@enduml

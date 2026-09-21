@@ -1,0 +1,20 @@
+@startuml DSS03A
+title DSS03A - Configurar comisión
+
+actor Administrador
+participant "Sistema" as Sistema
+
+Administrador -> Sistema: Seleccionar configuración de comisión
+Sistema -> Administrador: Mostrar comisión actual
+
+Administrador -> Sistema: Ingresar nuevo porcentaje de comisión
+Sistema -> Sistema: Validar porcentaje
+
+alt Porcentaje válido
+    Sistema -> Sistema: Actualizar comisión
+    Sistema -> Administrador: Confirmar configuración guardada
+else Porcentaje inválido
+    Sistema -> Administrador: Mostrar mensaje de error
+end
+
+@enduml

@@ -1,0 +1,23 @@
+@startuml SD01A
+title Diagrama de Secuencia - Iniciar sesión del administrador
+
+actor Administrador
+boundary Interfaz
+control "Sistema UnixDriver" as Sistema
+database "Base de Datos" as BD
+
+Administrador -> Interfaz: ingresarCredenciales(correo, contraseña)
+Interfaz -> Sistema: solicitarInicioSesion(credenciales)
+Sistema -> Sistema: validarCredenciales()
+Sistema -> BD: consultarAdministrador(correo)
+BD --> Sistema: usuario o vacío
+
+alt Credenciales válidas
+    Sistema --> Interfaz: iniciarSesion(token, permisos)
+    Interfaz --> Administrador: mostrar panel administrativo
+else Credenciales inválidas
+    Sistema --> Interfaz: mostrarError("Credenciales inválidas")
+    Interfaz --> Administrador: solicitar nuevamente las credenciales
+end
+
+@enduml

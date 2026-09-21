@@ -1,0 +1,19 @@
+@startuml DSS01A
+title DSS01A - Iniciar sesión Administrador
+
+actor Administrador
+participant "Sistema" as Sistema
+
+Administrador -> Sistema: Acceder al panel administrativo
+Sistema -> Administrador: Solicitar correo y contraseña
+
+Administrador -> Sistema: Ingresar credenciales
+Sistema -> Sistema: Validar identidad
+
+alt Credenciales válidas
+    Sistema -> Administrador: Mostrar dashboard administrativo
+else Credenciales inválidas
+    Sistema -> Administrador: Mostrar mensaje de error
+end
+
+@enduml

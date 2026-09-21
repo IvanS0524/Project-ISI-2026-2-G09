@@ -1,0 +1,37 @@
+@startuml SD04
+title Diagrama de Secuencia - Búsqueda unificada
+
+actor Pasajero
+boundary Interfaz
+control "Sistema UnixDriver" as Sistema
+database "Base de Datos" as BD
+participant "Uber" as Uber
+participant "DiDi" as Didi
+participant "inDrive" as InDrive
+
+Pasajero -> Interfaz: ingresarOrigenDestino(origen, destino)
+Interfaz -> Sistema: solicitarBusqueda(origen, destino)
+Sistema -> Sistema: validarDatos()
+
+alt Datos válidos
+    Sistema -> BD: guardarBusqueda(origen, destino)
+    BD --> Sistema: búsqueda registrada
+    par Consultar plataformas externas
+        Sistema -> Uber: consultarOfertas(origen, destino)
+        Uber --> Sistema: ofertas o error
+    else
+        Sistema -> Didi: consultarOfertas(origen, destino)
+        Didi --> Sistema: ofertas o error
+    else
+        Sistema -> InDrive: consultarOfertas(origen, destino)
+        InDrive --> Sistema: ofertas o error
+    end
+    Sistema -> Sistema: consolidarResultados()
+    Sistema --> Interfaz: mostrarOfertas(resultados)
+    Interfaz --> Pasajero: mostrar opciones disponibles
+else Datos inválidos
+    Sistema --> Interfaz: mostrarError("Origen o destino inválido")
+    Interfaz --> Pasajero: solicitar corrección
+end
+
+@enduml

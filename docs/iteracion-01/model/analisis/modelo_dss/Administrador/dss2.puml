@@ -1,0 +1,24 @@
+@startuml DSS02A
+title DSS02A - Gestionar usuarios
+
+actor Administrador
+participant "Sistema" as Sistema
+
+Administrador -> Sistema: Seleccionar gestión de usuarios
+Sistema -> Administrador: Mostrar listado de usuarios
+
+Administrador -> Sistema: Buscar o filtrar usuarios
+Sistema -> Sistema: Consultar base de datos
+Sistema -> Administrador: Mostrar resultados
+
+Administrador -> Sistema: Activar, desactivar o actualizar usuario
+Sistema -> Sistema: Validar información
+
+alt Operación válida
+    Sistema -> Sistema: Guardar cambios
+    Sistema -> Administrador: Confirmar actualización
+else Operación inválida
+    Sistema -> Administrador: Mostrar mensaje de error
+end
+
+@enduml

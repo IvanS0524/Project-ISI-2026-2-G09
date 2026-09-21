@@ -1,0 +1,20 @@
+@startuml DSS04A
+title DSS04A - Consultar reportes y estadísticas
+
+actor Administrador
+participant "Sistema" as Sistema
+
+Administrador -> Sistema: Seleccionar reportes y estadísticas
+Sistema -> Administrador: Mostrar opciones de reportes
+
+Administrador -> Sistema: Elegir rango de fechas y tipo de reporte
+Sistema -> Sistema: Procesar datos del sistema
+Sistema -> Administrador: Generar estadísticas
+
+alt Reporte disponible
+    Sistema -> Administrador: Mostrar gráfico o resumen ejecutivo
+else Sin datos
+    Sistema -> Administrador: Informar que no hay información para ese periodo
+end
+
+@enduml

@@ -1,0 +1,30 @@
+@startuml SD02A
+title Diagrama de Secuencia - Gestionar usuarios
+
+actor Administrador
+boundary Interfaz
+control "Sistema UnixDriver" as Sistema
+database "Base de Datos" as BD
+
+Administrador -> Interfaz: solicitarUsuarios(filtros)
+Interfaz -> Sistema: consultarUsuarios(filtros)
+Sistema -> BD: consultarUsuarios(filtros)
+BD --> Sistema: lista de usuarios
+Sistema --> Interfaz: mostrarUsuarios(usuarios)
+Interfaz --> Administrador: mostrar usuarios
+
+Administrador -> Interfaz: ingresarCambios(idUsuario, cambios)
+Interfaz -> Sistema: modificarUsuario(idUsuario, cambios)
+Sistema -> Sistema: validarCambios()
+
+alt Operación válida
+    Sistema -> BD: guardarCambios(idUsuario, cambios)
+    BD --> Sistema: usuario actualizado
+    Sistema --> Interfaz: confirmarCambios()
+    Interfaz --> Administrador: mostrar cambios guardados
+else Operación inválida
+    Sistema --> Interfaz: mostrarError("Cambios inválidos")
+    Interfaz --> Administrador: solicitar corrección
+end
+
+@enduml

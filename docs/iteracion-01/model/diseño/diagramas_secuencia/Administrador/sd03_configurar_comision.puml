@@ -1,0 +1,30 @@
+@startuml SD03A
+title Diagrama de Secuencia - Configurar comisión
+
+actor Administrador
+boundary Interfaz
+control "Sistema UnixDriver" as Sistema
+database "Base de Datos" as BD
+
+Administrador -> Interfaz: consultarConfiguracion()
+Interfaz -> Sistema: solicitarConfiguracion()
+Sistema -> BD: consultarConfiguracionActiva()
+BD --> Sistema: configuración actual
+Sistema --> Interfaz: mostrarConfiguracion(configuracion)
+Interfaz --> Administrador: mostrar porcentaje vigente
+
+Administrador -> Interfaz: ingresarConfiguracion(datos)
+Interfaz -> Sistema: guardarConfiguracion(datos)
+Sistema -> Sistema: validarDatos()
+
+alt Datos válidos
+    Sistema -> BD: actualizarConfiguracion(datos)
+    BD --> Sistema: configuración guardada
+    Sistema --> Interfaz: confirmarConfiguracion()
+    Interfaz --> Administrador: mostrar configuración guardada
+else Datos inválidos
+    Sistema --> Interfaz: mostrarError("Porcentaje o fechas inválidos")
+    Interfaz --> Administrador: solicitar corrección
+end
+
+@enduml

@@ -1,0 +1,20 @@
+@startuml DSS06P
+title DSS06P - Consultar historial de viajes
+
+actor Pasajero
+participant "Sistema" as Sistema
+
+Pasajero -> Sistema: Solicitar historial de viajes
+Sistema -> Sistema: Consultar viajes realizados
+
+alt Existen viajes registrados
+    Sistema -> Pasajero: Mostrar viajes ordenados por fecha
+
+    Pasajero -> Sistema: Seleccionar un viaje
+    Sistema -> Sistema: Consultar detalle del viaje
+    Sistema -> Pasajero: Mostrar detalle del viaje seleccionado
+else Historial vacío
+    Sistema -> Pasajero: Informar que no hay viajes registrados
+end
+
+@enduml

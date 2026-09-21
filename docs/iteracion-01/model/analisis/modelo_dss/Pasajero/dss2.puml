@@ -1,0 +1,19 @@
+@startuml DSS02P
+title DSS02P - Iniciar sesión Pasajero
+
+actor Pasajero
+participant "Sistema" as Sistema
+
+Pasajero -> Sistema: Iniciar sesión
+Sistema -> Pasajero: Solicitar correo y contraseña
+
+Pasajero -> Sistema: Ingresar correo y contraseña
+Sistema -> Sistema: Validar credenciales
+
+alt Credenciales correctas
+    Sistema -> Pasajero: Mostrar acceso a la plataforma
+else Credenciales incorrectas
+    Sistema -> Pasajero: Mostrar mensaje de error
+end
+
+@enduml

@@ -1,18 +1,65 @@
 # Iteración 01
 
-Esta carpeta contiene los documentos y evidencias correspondientes a la primera iteración del proyecto.
+Esta carpeta contiene la documentación y los modelos de análisis correspondientes a la primera iteración del proyecto **Plataforma de búsqueda unificada de transporte (UnixDriver)**.
+
+## Objetivo
+
+Definir los actores, requisitos funcionales, conceptos principales del dominio y diseño estructural del sistema antes de iniciar la etapa de construcción de la aplicación. En esta iteración se modelan las interacciones del Pasajero y del Administrador con la plataforma y se establecen los principales componentes y estructuras del sistema.
 
 ## Entregables
 
-Los integrantes del equipo deberán almacenar aquí los documentos y evidencias solicitados para esta iteración.
+### 1. Documentación de análisis
+
+* [Análisis funcional](model/analisis/README.md): Descripción de los actores, casos de uso y modelos de análisis del sistema.
+* [Modelo de dominio](model/analisis/modelo_dominio/modelo_dominio.png): Representación de los conceptos principales del dominio y sus relaciones.
+* [Diagrama de casos de uso](model/analisis/casos_uso/casos_uso.jpg): Representación de las funcionalidades del sistema y las interacciones de los actores.
+
+### 2. Diagramas de secuencia del sistema (DSS)
+
+Los DSS se encuentran organizados por actor y describen las interacciones entre el usuario y el sistema para los casos de uso principales.
+
+* [DSS del Pasajero](model/analisis/modelo_dss/Pasajero/): Seis diagramas de secuencia del sistema.
+* [DSS del Administrador](model/analisis/modelo_dss/Administrador/): Cuatro diagramas de secuencia del sistema.
+
+### 3. Diseño
+
+* [Diagrama de clases](model/diseño/diagrama_clases/diagrama_clases.puml): Responsabilidades y relaciones del dominio.
+* [Modelo entidad-relación](model/diseño/modelo_er/diagrama_er.puml): Estructura de persistencia propuesta.
+* [Diagramas de secuencia](model/diseño/diagramas_secuencia/README.md): Diez diagramas que detallan la colaboración interna de los casos de uso.
+
+## Alcance funcional
+
+### Pasajero
+
+* Registrarse e iniciar sesión.
+* Gestionar su perfil.
+* Realizar una búsqueda unificada de transporte.
+* Seleccionar una oferta de transporte.
+* Consultar el historial de viajes.
+
+### Administrador
+
+* Iniciar sesión.
+* Gestionar usuarios.
+* Configurar la comisión del servicio.
+* Consultar reportes y estadísticas.
+
+### Plataforma de Transporte
+
+- Proporcionar información sobre las ofertas de transporte disponibles.
+- Representar la integración conceptual con plataformas externas como Uber, DiDi e inDrive.
 
 ## Integrantes
 
-- Nombre del estudiante 1
-- Nombre del estudiante 2
-
+* Ivan Andres Sierra Arrieta
+* Sebastian de Jesus Morales Marimon
 
 ## Estado de la entrega
 
-- [ ] Documento de la iteración
-- [ ] Evidencias complementarias solicitadas
+* [x] Análisis funcional inicial.
+* [x] Modelo de dominio.
+* [x] Diagrama general de casos de uso.
+* [x] DSS del Pasajero.
+* [x] DSS del Administrador.
+* [x] Diagrama de clases y modelo entidad-relación.
+* [x] Diagramas de secuencia de diseño.
