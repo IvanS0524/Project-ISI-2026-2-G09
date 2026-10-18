@@ -1,5 +1,19 @@
 # Frontend
 
-Esta carpeta contiene el código fuente correspondiente a la interfaz de usuario de la solución.
+Interfaz web estática de UniX Driver, organizada por responsabilidades para que la vista pueda crecer sin convertir `index.html` en un archivo monolítico.
 
-Indique si corresponde a una aplicación web o de escritorio, las tecnologías utilizadas y las instrucciones necesarias para ejecutarla.
+## Estructura
+
+```text
+frontend/
+├── index.html              # Estructura semántica y contenido de la página
+└── assets/
+    ├── css/
+    │   └── styles.css      # Tokens, layout, componentes y responsive UI
+    └── js/
+        └── app.js          # Menú, navegación, tarifas y animaciones
+```
+
+## Ejecución local
+
+Abre `index.html` directamente en el navegador o sirve la carpeta con cualquier servidor estático. No requiere build ni dependencias del frontend.
