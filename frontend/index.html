@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0b1a2e">
+<title>UniX Driver · Movilidad inteligente en Cartagena de Indias</title>
+<meta name="description" content="UniX Driver es un prototipo académico que explora una experiencia centralizada para comparar alternativas de transporte en Cartagena de Indias: barrios, tarifas ilustrativas y visualización del recorrido.">
+<meta name="author" content="UniX Driver">
+<meta property="og:title" content="UniX Driver · Movilidad inteligente en Cartagena de Indias">
+<meta property="og:description" content="Prototipo académico de una experiencia digital centralizada para explorar alternativas de movilidad urbana en Cartagena.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b1a2e'/%3E%3Cpath d='M9 8v9a7 7 0 0 0 14 0V8' fill='none' stroke='%23ffb347' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"CreativeWork","name":"UniX Driver","description":"Prototipo académico de una plataforma conceptual de recomendación y comparación de servicios de transporte en Cartagena, Colombia.","inLanguage":"es-CO","about":"Movilidad urbana, Cartagena de Indias"}
+</script>
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+<a class="skip-link" href="#inicio">Saltar al contenido principal</a>
+<!-- ============ HEADER ============ -->
+<header class="site-header" id="siteHeader">
+  <div class="container">
+    <nav class="nav" aria-label="Navegación principal">
+      <a class="brand" href="#inicio" aria-label="UniX Driver, ir al inicio">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none"><path d="M9 7v10a7 7 0 0 0 14 0V7" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/><circle cx="23" cy="23" r="3.4" fill="#FFB347"/></svg>
+        </span>
+        <span class="brand__text">
+          <span class="brand__name">Uni<span>X</span> Driver</span>
+          <span class="brand__sub">Cartagena · Colombia</span>
+        </span>
+      </a>
+      <div class="nav__links">
+        <a href="#inicio" class="nav-link is-active">Inicio</a>
+        <a href="#propuesta" class="nav-link">Propuesta</a>
+        <a href="#como-funciona" class="nav-link">Cómo funciona</a>
+        <a href="#demo" class="nav-link">Demostración</a>
+        <a href="#movilidad" class="nav-link">Movilidad en Cartagena</a>
+        <a href="#tarifas" class="nav-link">Tarifas</a>
+        <a href="#beneficios" class="nav-link">Beneficios</a>
+        <a href="#proyecto" class="nav-link">Sobre el proyecto</a>
+      </div>
+      <button class="burger" id="burger" type="button" aria-expanded="false" aria-controls="mobileMenu" aria-label="Abrir menú de navegación">
+        <span class="burger__box" aria-hidden="true"><i></i><i></i><i></i></span>
+      </button>
+    </nav>
+  </div>
+  <div class="mobile-menu" id="mobileMenu">
+    <div class="mobile-menu__inner">
+      <a href="#inicio">Inicio</a>
+      <a href="#propuesta">Propuesta</a>
+      <a href="#como-funciona">Cómo funciona</a>
+      <a href="#demo">Demostración</a>
+      <a href="#movilidad">Movilidad en Cartagena</a>
+      <a href="#tarifas">Tarifas</a>
+      <a href="#beneficios">Beneficios</a>
+      <a href="#proyecto">Sobre el proyecto</a>
+    </div>
+  </div>
+</header>
+
+<main>
+<!-- ============ 1. HERO ============ -->
+<section class="hero" id="inicio">
+  <div class="container hero__grid">
+    <div class="hero__copy reveal">
+      <span class="tag"><span class="dot"></span> Proyecto académico · Prototipo conceptual</span>
+      <h1 class="hero__title">Tu movilidad en Cartagena, en una <em>nueva dimensión</em></h1>
+      <p class="hero__text">UniX Driver propone una forma más inteligente de explorar opciones de transporte, comparar alternativas y descubrir una experiencia de movilidad centralizada.</p>
+      <div class="hero__actions">
+        <a class="btn btn--gold" href="#demo">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Explorar la experiencia
+        </a>
+        <a class="btn btn--ghost" href="#como-funciona">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          Conocer cómo funciona
+        </a>
+      </div>
+      <div class="hero__trust">
+        <div><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6l7-3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg> Modelo de tarifas por zona documentado</div>
+        <div><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 17h16M6 17l2-6h8l2 6M9 11V7h6v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Moto y carro en una sola vista</div>
+        <div><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M11 18h2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg> Diseñado primero para móvil</div>
+      </div>
+    </div>
+
+    <div class="hero__visual reveal">
+      <figure class="hero__photo">
+        <img src="https://sspark.genspark.ai/i/JsbFro8F2fXAtU6g?width=2560"
+             alt="Vista urbana de Cartagena de Indias con edificios altos al atardecer"
+             width="728" height="483" fetchpriority="high" decoding="async">
+        <figcaption class="hero__photo-caption">
+          <div>
+            <strong>Cartagena de Indias</strong>
+            <span>Contexto urbano del prototipo · Imagen ilustrativa de referencia</span>
+          </div>
+        </figcaption>
+      </figure>
+
+      <div class="hero__map" role="img" aria-label="Mapa estilizado e ilustrativo de los barrios contemplados en el prototipo">
+        <div class="hero__map-title"><span>Barrios del prototipo</span><span>Ilustrativo</span></div>
+        <svg viewBox="0 0 240 150" style="width:100%;height:auto;border-radius:10px;background:#EAF1FB" aria-hidden="true">
+          <path d="M0 96 Q48 78 96 92 T240 74" fill="none" stroke="#c7d8ee" stroke-width="2"/>
+          <path d="M20 26 Q74 58 128 40 T228 30" fill="none" stroke="#c7d8ee" stroke-width="2"/>
+          <path d="M34 136 Q92 104 150 122 T236 112" fill="none" stroke="#d6e3f5" stroke-width="2"/>
+          <circle cx="52" cy="66" r="18" fill="#dbe8fa"/>
+          <circle cx="150" cy="92" r="22" fill="#dbe8fa"/>
+          <path d="M52 66 L150 92" stroke="#1D4FD7" stroke-width="2" stroke-dasharray="5 4"/>
+          <circle cx="52" cy="66" r="6" fill="#0B1A2E"/>
+          <circle cx="150" cy="92" r="6" fill="#16A34A"/>
+          <circle cx="196" cy="52" r="4.5" fill="#D97706"/>
+          <circle cx="104" cy="126" r="4.5" fill="#DC2626"/>
+          <circle cx="28" cy="112" r="4.5" fill="#6B7280"/>
+        </svg>
+      </div>
+
+      <div class="hero__card">
+        <div class="hero__card-top">
+          <b>Resumen del viaje</b>
+          <span class="tag tag--gold">Sede Piedra de Bolívar</span>
+        </div>
+        <div class="route">
+          <div class="route-row"><span class="pin" style="background:#0B1A2E"></span><span>Origen&nbsp;<b>Univ. de Cartagena · Sede Piedra de Bolívar</b></span></div>
+          <div class="route-row"><span class="pin" style="background:#16A34A"></span><span>Destino&nbsp;<b>Manga</b> · Zona media</span></div>
+        </div>
+        <div class="fare"><small>Tarifa ilustrativa · moto</small><b>$9.000 COP</b></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 2. PROPUESTA DE VALOR ============ -->
+<section class="section section--alt" id="propuesta" aria-labelledby="h-propuesta">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Propuesta de valor</span>
+      <h2 id="h-propuesta">Una sola experiencia para entender tu movilidad</h2>
+      <p class="lead">UniX Driver explora cómo reunir en una única interfaz la información que hoy está repartida entre varias aplicaciones: alternativas, referencias de tarifa y el recorrido completo del viaje.</p>
+    </div>
+    <div class="grid-3">
+      <article class="card card--hover reveal">
+        <div class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <span class="card__num">01</span>
+        <h3>Explora alternativas de movilidad</h3>
+        <p>El concepto reúne referencias de distintas plataformas de transporte en una experiencia centralizada, para que la persona compare opciones sin saltar entre aplicaciones.</p>
+      </article>
+      <article class="card card--hover reveal">
+        <div class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 9h3M8 13h6M8 16h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+        <span class="card__num">02</span>
+        <h3>Conoce las tarifas por destino</h3>
+        <p>El modelo de demostración organiza los barrios de Cartagena en categorías de distancia corta, media y larga, con valores ilustrativos en pesos colombianos para moto y carro.</p>
+      </article>
+      <article class="card card--hover reveal">
+        <div class="card__icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 18l5-6 4 3 7-9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="12" r="1.8" fill="currentColor"/><circle cx="13" cy="15" r="1.8" fill="currentColor"/></svg></div>
+        <span class="card__num">03</span>
+        <h3>Visualiza tu recorrido</h3>
+        <p>La experiencia conceptual acompaña todo el proceso: desde la solicitud del servicio y la selección de ofertas hasta el seguimiento del viaje y su resumen de pago con la comisión del modelo.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3. C�"MO FUNCIONA ============ -->
+<section class="section section--tint" id="como-funciona" aria-labelledby="h-como">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Cómo funciona</span>
+      <h2 id="h-como">Cuatro pasos, una experiencia continua</h2>
+      <p class="lead">El prototipo recorre el flujo completo de un viaje simulado saliendo desde la Sede Piedra de Bolívar de la Universidad de Cartagena.</p>
+    </div>
+    <div class="steps-layout">
+      <div class="steps">
+        <article class="step reveal"><span class="step__n">1</span><div><h3>Elige tu destino</h3><p>La persona selecciona un barrio de Cartagena de la lista disponible y decide si quiere moverse en moto o en carro.</p></div></article>
+        <article class="step reveal"><span class="step__n">2</span><div><h3>Explora las alternativas</h3><p>El prototipo ilustra el concepto de consultar y comparar opciones de distintas plataformas de referencia en una sola búsqueda.</p></div></article>
+        <article class="step reveal"><span class="step__n">3</span><div><h3>Revisa la propuesta</h3><p>Se muestra una representación de las ofertas, el vehículo seleccionado y los datos ilustrativos del viaje.</p></div></article>
+        <article class="step reveal"><span class="step__n">4</span><div><h3>Consulta el resumen</h3><p>Una demostración del seguimiento del recorrido, la tarifa aplicada y el cálculo conceptual de la comisión del 10&nbsp;% del modelo académico.</p></div></article>
+      </div>
+
+      <div class="appwin reveal" role="img" aria-label="Representación ilustrativa de la interfaz de solicitud de UniX Driver">
+        <div class="appwin__bar" aria-hidden="true"><i></i><i></i><i></i><span class="appwin__url">unix-driver · solicitud de viaje (vista ilustrativa)</span></div>
+        <div class="appwin__body">
+          <div class="appwin__head">
+            <h4>Solicitud de viaje</h4>
+            <span class="tag tag--dark">Simulación</span>
+          </div>
+          <div class="mini-veh" role="group" aria-label="Selector de tipo de vehículo">
+            <span class="on"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="5" cy="16" r="3" stroke="currentColor" stroke-width="1.7"/><circle cx="19" cy="16" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M8 16h8l-2-6H10l-2 6zM6 10h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Moto</span>
+            <span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 15l1.6-5.2A2 2 0 0 1 7.5 8h9a2 2 0 0 1 1.9 1.8L20 15v3h-3v-1H7v1H4v-3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="8" cy="15" r="1.2" fill="currentColor"/><circle cx="16" cy="15" r="1.2" fill="currentColor"/></svg> Carro</span>
+          </div>
+          <div class="mini-field"><label>Origen</label><div class="box box--ro">Universidad de Cartagena · Sede Piedra de Bolívar</div></div>
+          <div class="mini-field"><label>Destino</label><div class="box box--focus">Manga</div></div>
+          <div class="zone-chip"><i aria-hidden="true"></i> Zona media · Moto: <b>$9.000</b></div>
+          <div class="mini-offers">
+            <div class="mini-offer"><span class="mini-offer__av" aria-hidden="true">CM</span><span class="mini-offer__info"><b>Carlos M.</b><small>TVS Raider · 4.8</small></span><span><span class="mini-offer__plat">Referencia A</span><span class="mini-offer__price">$9.000</span></span></div>
+            <div class="mini-offer"><span class="mini-offer__av" aria-hidden="true">AR</span><span class="mini-offer__info"><b>Andrés R.</b><small>Pulsar 125 · 4.7</small></span><span><span class="mini-offer__plat">Referencia B</span><span class="mini-offer__price">$8.500</span></span></div>
+            <div class="mini-offer"><span class="mini-offer__av" aria-hidden="true">LS</span><span class="mini-offer__info"><b>Laura S.</b><small>Honda CB125 · 4.9</small></span><span><span class="mini-offer__plat">Referencia C</span><span class="mini-offer__price">$9.400</span></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 4. DEMOSTRACI�"N ============ -->
+<section class="section section--alt" id="demo" aria-labelledby="h-demo">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Demostración visual del producto</span>
+      <h2 id="h-demo">Así se ve el prototipo UniX Driver</h2>
+      <p class="lead">Vistas reconstruidas con HTML y CSS para representar fielmente la interfaz funcional adjunta. Son representaciones ilustrativas del prototipo, no capturas exactas del sistema.</p>
+    </div>
+
+    <div class="demo-board reveal">
+      <div class="demo-grid">
+        <!-- Vista de escritorio / panel -->
+        <div class="panel" role="img" aria-label="Representación ilustrativa del panel de solicitud en escritorio">
+          <h4><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 20h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Panel de solicitud · vista escritorio</h4>
+          <div class="mini-veh" role="group" aria-label="Selector de vehículo, demostración">
+            <span class="on"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="5" cy="16" r="3" stroke="currentColor" stroke-width="1.7"/><circle cx="19" cy="16" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M8 16h8l-2-6H10l-2 6zM6 10h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Moto</span>
+            <span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 15l1.6-5.2A2 2 0 0 1 7.5 8h9a2 2 0 0 1 1.9 1.8L20 15v3h-3v-1H7v1H4v-3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="8" cy="15" r="1.2" fill="currentColor"/><circle cx="16" cy="15" r="1.2" fill="currentColor"/></svg> Carro</span>
+          </div>
+          <div style="display:grid;gap:11px;margin-top:14px">
+            <div class="mini-field"><label>Origen</label><div class="box box--ro">Universidad de Cartagena · Sede Piedra de Bolívar</div></div>
+            <div class="mini-field"><label>Destino</label><div class="box box--focus">Bocagrande</div></div>
+            <div class="mini-field"><label>Tarjeta de destino</label><div class="box" style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>Zona larga · Moto</span><b style="font-variant-numeric:tabular-nums">$14.000</b></div></div>
+            <div class="mini-offer" style="border-color:#cfe0f8"><span class="mini-offer__av" aria-hidden="true">MP</span><span class="mini-offer__info"><b>Miguel P.</b><small>Yamaha FZ-S · oferta seleccionada</small></span><span><span class="mini-offer__plat">Seleccionada</span><span class="mini-offer__price">$14.000</span></span></div>
+          </div>
+        </div>
+
+        <!-- Teléfono + plataformas -->
+        <div style="display:grid;gap:clamp(18px,2.4vw,26px)">
+          <div class="phone" role="img" aria-label="Representación ilustrativa de la experiencia móvil del prototipo">
+            <div class="phone__screen">
+              <div class="phone__status"><span>9:41</span><span aria-hidden="true">�-��-��-�</span></div>
+              <div class="phone__top">
+                <span class="brand" style="gap:8px">
+                  <span class="brand__mark" style="width:28px;height:28px;border-radius:9px" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none" style="width:17px;height:17px"><path d="M9 7v10a7 7 0 0 0 14 0V7" stroke="#fff" stroke-width="3.4" stroke-linecap="round"/></svg></span>
+                  <span class="brand__name" style="font-size:.86rem">Uni<span>X</span> Driver</span>
+                </span>
+                <span class="tag" style="font-size:.58rem;padding:4px 9px">Demo</span>
+              </div>
+              <div class="phone__body">
+                <div class="phone__hero"><b>Seguimiento del viaje</b><p>Conductor en camino · 2 min · representación ilustrativa</p></div>
+                <div class="zone-chip" style="font-size:.7rem"><i aria-hidden="true"></i> Zona larga · Bocagrande</div>
+                <div class="mini-field"><label>Vehículo</label><div class="box" style="font-size:.78rem">Yamaha FZ-S · Miguel P.</div></div>
+                <div class="mini-field"><label>Tarifa del viaje</label><div class="box" style="font-size:1rem;font-weight:800">$14.000</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="panel panel--dark">
+            <h4><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Plataformas de referencia del prototipo</h4>
+            <div class="platform-row">
+              <div class="platform"><span class="platform__k">A</span><b>Uber</b><small>Referencia ilustrativa</small></div>
+              <div class="platform"><span class="platform__k">B</span><b>DiDi</b><small>Referencia ilustrativa</small></div>
+              <div class="platform"><span class="platform__k">C</span><b>inDrive</b><small>Referencia ilustrativa</small></div>
+            </div>
+            <p style="font-size:.78rem;color:#9db4d0;margin-top:14px;line-height:1.6">Se presentan como referencias del mercado dentro de la simulación académica. El prototipo no está conectado técnicamente a estas plataformas.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mapa + resumen -->
+      <div class="demo-grid" style="margin-top:clamp(20px,3vw,32px)">
+        <div class="mapcard">
+          <h4 style="font-size:.95rem;display:flex;align-items:center;gap:9px;margin-bottom:12px">
+            <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;color:#1D4FD7" aria-hidden="true"><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.8"/></svg>
+            Mapa ilustrativo de Cartagena
+          </h4>
+          <svg class="mapcard__svg" viewBox="0 0 620 300" role="img" aria-label="Mapa estilizado e ilustrativo con rutas y marcadores de barrios de Cartagena">
+            <rect width="620" height="300" fill="#EAF1FB"/>
+            <path d="M-10 210 Q120 168 250 196 T630 160" fill="none" stroke="#cbdcef" stroke-width="3"/>
+            <path d="M-10 120 Q150 88 300 116 T630 92" fill="none" stroke="#cbdcef" stroke-width="3"/>
+            <path d="M60 -10 Q96 110 80 310" fill="none" stroke="#d6e3f5" stroke-width="3"/>
+            <path d="M320 -10 Q360 130 340 310" fill="none" stroke="#d6e3f5" stroke-width="3"/>
+            <path d="M470 -10 Q520 120 500 310" fill="none" stroke="#d6e3f5" stroke-width="3"/>
+            <ellipse cx="512" cy="238" rx="86" ry="40" fill="#dbe8fa"/>
+            <text x="512" y="242" text-anchor="middle" font-family="Plus Jakarta Sans, Arial" font-size="11" fill="#7d93ae">Bahía</text>
+            <path d="M150 168 Q250 150 330 178 T470 118" fill="none" stroke="#1D4FD7" stroke-width="2.4" stroke-dasharray="7 6"/>
+            <path d="M150 168 Q210 210 292 226" fill="none" stroke="#16A34A" stroke-width="2.2" stroke-dasharray="7 6"/>
+            <circle cx="150" cy="168" r="10" fill="#0B1A2E"/>
+            <circle cx="150" cy="168" r="4" fill="#FFB347"/>
+            <text x="150" y="192" text-anchor="middle" font-family="Plus Jakarta Sans, Arial" font-size="11" font-weight="700" fill="#0B1A2E">Piedra de Bolívar</text>
+            <g font-family="Plus Jakarta Sans, Arial" font-size="11" font-weight="700">
+              <circle cx="330" cy="178" r="7" fill="#DC2626"/><text x="330" y="200" text-anchor="middle" fill="#0B1A2E">Centro Histórico</text>
+              <circle cx="412" cy="150" r="7" fill="#DC2626"/><text x="412" y="140" text-anchor="middle" fill="#0B1A2E">Bocagrande</text>
+              <circle cx="292" cy="226" r="7" fill="#D97706"/><text x="292" y="248" text-anchor="middle" fill="#0B1A2E">Manga</text>
+              <circle cx="358" cy="206" r="7" fill="#DC2626"/><text x="392" y="228" text-anchor="middle" fill="#0B1A2E">Getsemaní</text>
+              <circle cx="452" cy="196" r="7" fill="#DC2626"/><text x="452" y="220" text-anchor="middle" fill="#0B1A2E">Castillogrande</text>
+              <circle cx="250" cy="120" r="7" fill="#DC2626"/><text x="250" y="110" text-anchor="middle" fill="#0B1A2E">Crespo</text>
+            </g>
+          </svg>
+          <div class="map-legend">
+            <span><i style="background:#16A34A"></i>Zona corta</span>
+            <span><i style="background:#D97706"></i>Zona media</span>
+            <span><i style="background:#DC2626"></i>Zona larga</span>
+            <span><i style="background:#0B1A2E"></i>Origen del prototipo</span>
+            <span>Visualización ilustrativa, sin datos de geolocalización reales</span>
+          </div>
+        </div>
+
+        <div class="fare-summary">
+          <h4 style="font-size:.95rem;display:flex;align-items:center;gap:9px;margin-bottom:14px">
+            <svg viewBox="0 0 24 24" fill="none" style="width:18px;height:18px;color:#1D4FD7" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 8h6M9 12h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            Resumen de pago ilustrativo
+          </h4>
+          <div class="fare-summary__big">
+            <small>Tarifa del viaje · simulación</small>
+            <b>$14.000</b>
+            <span style="font-size:.78rem;color:#5B6F88">Piedra de Bolívar �?' Bocagrande · Moto</span>
+          </div>
+          <div class="fare-rows">
+            <div class="fare-row"><span>Tarifa que paga el pasajero</span><b>$14.000</b></div>
+            <div class="fare-row neg"><span>Comisión UniX Driver (10&nbsp;%)</span><b>-$1.400</b></div>
+            <div class="fare-row total"><span>Ingreso neto del conductor</span><b>$12.600</b></div>
+          </div>
+          <p style="font-size:.74rem;color:#5B6F88;margin-top:14px;line-height:1.6">Cálculo conceptual del modelo académico. No representa cobros reales ni liquidaciones de ninguna plataforma.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 5. MOVILIDAD EN CARTAGENA ============ -->
+<section class="section section--tint" id="movilidad" aria-labelledby="h-mov">
+  <div class="container mov-layout">
+    <div class="reveal">
+      <span class="eyebrow">Contexto local</span>
+      <h2 id="h-mov">Pensado para la movilidad de Cartagena</h2>
+      <p class="lead">El prototipo parte de un origen fijo �?"la Sede Piedra de Bolívar de la Universidad de Cartagena�?" y organiza los destinos por barrios de la ciudad, agrupándolos según la categoría de distancia definida en el modelo académico.</p>
+      <div class="barrio-list">
+        <div class="barrio"><span class="barrio__pin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.8"/></svg></span><span><b>Centro Histórico</b><small>Patrimonio y núcleo turístico</small></span><span class="barrio__zone z-largo">Larga</span></div>
+        <div class="barrio"><span class="barrio__pin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.8"/></svg></span><span><b>Bocagrande</b><small>Zona hotelera y comercial</small></span><span class="barrio__zone z-largo">Larga</span></div>
+        <div class="barrio"><span class="barrio__pin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.8"/></svg></span><span><b>Manga</b><small>Zona residencial junto a la bahía</small></span><span class="barrio__zone z-medio">Media</span></div>
+        <div class="barrio"><span class="barrio__pin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.8"/></svg></span><span><b>Getsemaní</b><small>Barrio de transición hacia el centro</small></span><span class="barrio__zone z-largo">Larga</span></div>
+        <div class="barrio"><span class="barrio__pin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.8"/></svg></span><span><b>Castillogrande</b><small>Sector residencial en la península</small></span><span class="barrio__zone z-largo">Larga</span></div>
+        <div class="barrio"><span class="barrio__pin" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.8"/></svg></span><span><b>Crespo</b><small>Acceso norte y corredor aeropuerto</small></span><span class="barrio__zone z-largo">Larga</span></div>
+      </div>
+      <p style="font-size:.76rem;color:#5B6F88;margin-top:16px;line-height:1.6">Cartografía estilizada con fines ilustrativos. El prototipo no utiliza mapas geográficos reales ni datos GPS verificados.</p>
+    </div>
+
+    <figure class="about-photo reveal" style="margin:0">
+      <img src="https://sspark.genspark.ai/i/V0UftVK1IUXJrbFT?width=2560"
+           alt="Vista aérea del litoral urbano de Cartagena de Indias"
+           width="4272" height="2848" loading="lazy" decoding="async">
+      <figcaption>Vista aérea del litoral urbano de Cartagena de Indias · imagen de referencia</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ 6. TARIFAS ============ -->
+<section class="section section--alt" id="tarifas" aria-labelledby="h-tarifas">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Tarifas y categorías</span>
+      <h2 id="h-tarifas">El modelo de tarifas del prototipo</h2>
+      <p class="lead">Valores en pesos colombianos definidos para la simulación académica, calculados desde la Sede Piedra de Bolívar y agrupados en tres categorías de distancia para moto y carro.</p>
+    </div>
+
+    <div class="fares-layout">
+      <div class="reveal">
+        <h3 style="margin-bottom:14px">Tipo de vehículo</h3>
+        <div class="veh-toggle" role="group" aria-label="Selecciona el tipo de vehículo para ver la tarifa">
+          <button type="button" id="btnMoto" aria-pressed="true" data-veh="moto">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="5" cy="16" r="3" stroke="currentColor" stroke-width="1.7"/><circle cx="19" cy="16" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M8 16h8l-2-6H10l-2 6zM6 10h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> Moto
+          </button>
+          <button type="button" id="btnCarro" aria-pressed="false" data-veh="carro">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 15l1.6-5.2A2 2 0 0 1 7.5 8h9a2 2 0 0 1 1.9 1.8L20 15v3h-3v-1H7v1H4v-3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="8" cy="15" r="1.2" fill="currentColor"/><circle cx="16" cy="15" r="1.2" fill="currentColor"/></svg> Carro
+          </button>
+        </div>
+        <div class="fare-note">
+          <b>Importante:</b> los valores corresponden a la simulación académica de UniX Driver. No son tarifas oficiales ni cotizaciones en tiempo real de Uber, DiDi o inDrive, y pueden variar en la operación real de cada plataforma.
+        </div>
+        <div class="restricted-note">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M6 6l12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span><b>Zonas restringidas:</b> el prototipo contempla barrios en los que la simulación no ofrece servicio por criterios de seguridad. Se identifican con color gris y quedan fuera del cálculo de tarifas.</span>
+        </div>
+      </div>
+
+      <div class="reveal">
+        <div class="fare-table-wrap">
+          <table class="fare-table">
+            <caption>Tarifas ilustrativas por categoría · pesos colombianos (COP)</caption>
+            <thead>
+              <tr><th scope="col">Categoría</th><th scope="col">Moto</th><th scope="col">Carro</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row" class="fare-cat"><i style="background:#16A34A" aria-hidden="true"></i><span>Zona corta<small>17 barrios contemplados</small></span></th>
+                <td class="price" data-moto>$5.000</td><td class="price" data-carro>$15.000</td>
+              </tr>
+              <tr>
+                <th scope="row" class="fare-cat"><i style="background:#D97706" aria-hidden="true"></i><span>Zona media<small>32 barrios contemplados</small></span></th>
+                <td class="price" data-moto>$9.000</td><td class="price" data-carro>$20.000</td>
+              </tr>
+              <tr>
+                <th scope="row" class="fare-cat"><i style="background:#DC2626" aria-hidden="true"></i><span>Zona larga<small>13 barrios contemplados</small></span></th>
+                <td class="price" data-moto>$14.000</td><td class="price" data-carro>$32.000</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="fare-note" style="border-left-color:#1D4FD7">
+          <b>Comisión del modelo:</b> el prototipo calcula una comisión del 10&nbsp;% sobre la tarifa ilustrativa como parte de su simulación académica. Por ejemplo, una tarifa de $14.000 genera $1.400 de comisión y $12.600 de ingreso neto para el conductor dentro de la demo.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 7. BENEFICIOS ============ -->
+<section class="section section--tint" id="beneficios" aria-labelledby="h-bene">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Beneficios del concepto</span>
+      <h2 id="h-bene">Lo que UniX Driver busca ofrecer</h2>
+      <p class="lead">Cada beneficio se marca según su estado real en el prototipo, para diferenciar lo ya demostrado del rumbo que el proyecto quiere explorar a futuro.</p>
+    </div>
+
+    <div class="benefits">
+      <article class="benefit benefit--wide reveal">
+        <span class="benefit__ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="4" width="7" height="7" rx="2" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="15" width="7" height="5" rx="2" stroke="currentColor" stroke-width="1.8"/><rect x="14" y="15" width="7" height="5" rx="2" stroke="currentColor" stroke-width="1.8"/></svg></span>
+        <h3>Una experiencia centralizada para explorar opciones</h3>
+        <p>En lugar de abrir varias aplicaciones, el concepto reúne en una misma pantalla las alternativas disponibles, el vehículo elegido y las referencias de precio para el destino seleccionado.</p>
+        <span class="benefit__flag flag-done">Demostrado en el prototipo</span>
+      </article>
+
+      <article class="benefit benefit--narrow benefit--feature reveal">
+        <span class="benefit__ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.6 5.6 6.1.8-4.5 4.2 1.2 6-5.4-3-5.4 3 1.2-6L3.3 9.4l6.1-.8L12 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg></span>
+        <h3>Diseñado primero para dispositivos móviles</h3>
+        <p>La interfaz del prototipo fue concebida como una experiencia móvil de una sola columna, pensada para usarse en la calle, con una mano y en pocos segundos.</p>
+        <span class="benefit__flag" style="background:rgba(255,179,71,.16);color:#FFB347">Base del proyecto</span>
+      </article>
+
+      <article class="benefit benefit--third reveal">
+        <span class="benefit__ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16v14H4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 9h3M8 13h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+        <h3>Consulta ilustrativa de tarifas por destino</h3>
+        <p>Un modelo de referencia que traduce el barrio de destino en una categoría de distancia y un valor estimado en pesos colombianos.</p>
+        <span class="benefit__flag flag-done">Demostrado en el prototipo</span>
+      </article>
+
+      <article class="benefit benefit--third reveal">
+        <span class="benefit__ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M7 4h10l1.5 16h-13L7 4z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9.5 8.5h5M9.8 12h4.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+        <h3>Selección de alternativas de movilidad</h3>
+        <p>El usuario compara ofertas de conductores con su vehículo, calificación y precio antes de decidir, dentro de la simulación.</p>
+        <span class="benefit__flag flag-done">Demostrado en el prototipo</span>
+      </article>
+
+      <article class="benefit benefit--third reveal">
+        <span class="benefit__ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v3.4l2.4 1.6M4 20l3-2M20 20l-3-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+        <h3>Visualización del proceso del viaje</h3>
+        <p>El recorrido se representa paso a paso: solicitud, búsqueda, selección de la oferta, seguimiento y cierre del servicio.</p>
+        <span class="benefit__flag flag-done">Demostrado en el prototipo</span>
+      </article>
+
+      <article class="benefit benefit--half reveal">
+        <span class="benefit__ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 8h6M9 12h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>
+        <h3>Resumen de pago y comisión del modelo</h3>
+        <p>El cierre del viaje muestra la tarifa, la comisión del 10&nbsp;% planteada por el proyecto y el ingreso neto resultante del conductor, siempre como cálculo conceptual.</p>
+        <span class="benefit__flag flag-done">Demostrado en el prototipo</span>
+      </article>
+
+      <article class="benefit benefit--half reveal">
+        <span class="benefit__ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6l7-3z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <h3>Proyección: integración y datos en vivo</h3>
+        <p>A futuro, el proyecto exploraría consultar tarifas dinámicas y disponibilidad real de conductores. Hoy el prototipo es una simulación académica sin conexión a plataformas reales.</p>
+        <span class="benefit__flag flag-road">Objetivo futuro, no implementado</span>
+      </article>
+    </div>
+
+    <div class="legend-flags reveal">
+      <span><span class="benefit__flag flag-done" style="margin:0">Demostrado en el prototipo</span> funcionalidad presente en la interfaz adjunta</span>
+      <span><span class="benefit__flag flag-road" style="margin:0">Objetivo futuro</span> línea de trabajo aún no implementada</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 8. CTA ============ -->
+<section class="section cta" id="cta" aria-labelledby="h-cta">
+  <div class="container cta__inner">
+    <span class="tag" style="margin-bottom:20px"><span class="dot"></span> Prototipo académico</span>
+    <h2 id="h-cta">La próxima forma de explorar la movilidad urbana</h2>
+    <p>Descubre el concepto UniX Driver y conoce cómo una experiencia digital centralizada puede transformar la manera de explorar alternativas de transporte.</p>
+    <div class="cta__actions">
+      <a class="btn btn--gold" href="#demo">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5l11 7-11 7V5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        Ver demostración
+      </a>
+      <a class="btn btn--ghost" href="#proyecto">Sobre el proyecto</a>
+    </div>
+    <div class="cta__points">
+      <span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Sin registros ni pagos reales</span>
+      <span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Datos de demostración</span>
+      <span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12l4 4 10-10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Cartagena, Colombia</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 9. SOBRE EL PROYECTO ============ -->
+<section class="section section--alt" id="proyecto" aria-labelledby="h-proy">
+  <div class="container about-layout">
+    <div class="reveal">
+      <span class="eyebrow">Sobre el proyecto</span>
+      <h2 id="h-proy">Un ejercicio de diseño y desarrollo de producto digital</h2>
+      <p class="lead">UniX Driver es un proyecto de desarrollo de software orientado a explorar una experiencia inteligente de recomendación de servicios de transporte mediante aplicaciones en Cartagena. Su enfoque combina experiencia de usuario, presentación clara de alternativas y visualización del proceso completo de movilidad.</p>
+      <div class="about-facts">
+        <div class="about-fact"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5 9-5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M5 12v4c0 1.7 3.1 3 7 3s7-1.3 7-3v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><div><b>Enfoque académico</b><p>El trabajo examina cómo se comunican las opciones de movilidad al usuario y cómo se estructura la información de tarifas por destino.</p></div></div>
+        <div class="about-fact"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M11 18h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><div><b>Prototipo funcional</b><p>La interfaz adjunta es un demo navegable de una sola página, construido con HTML, CSS y JavaScript sin dependencias externas.</p></div></div>
+        <div class="about-fact"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v4l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><div><b>Alcance actual</b><p>Todas las búsquedas, ofertas, seguimiento y pagos mostrados son simulaciones locales. No existe conexión con Uber, DiDi, inDrive ni con ningún operador de transporte.</p></div></div>
+      </div>
+      <span class="tag tag--gold" style="margin-top:22px;display:inline-flex">Prototipo académico · Sin operación comercial</span>
+    </div>
+    <figure class="about-photo reveal" style="margin:0">
+      <img src="https://sspark.genspark.ai/i/yIbDM470z4DTvSLg?width=2560"
+           alt="Panorámica urbana de Cartagena de Indias con edificios residenciales"
+           width="4272" height="2848" loading="lazy" decoding="async">
+      <figcaption>Cartagena de Indias, Colombia · imagen de referencia urbana</figcaption>
+    </figure>
+  </div>
+</section>
+</main>
+
+<!-- ============ 10. FOOTER ============ -->
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="#inicio" aria-label="UniX Driver, volver al inicio">
+          <span class="brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none"><path d="M9 7v10a7 7 0 0 0 14 0V7" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/><circle cx="23" cy="23" r="3.4" fill="#FFB347"/></svg>
+          </span>
+          <span class="brand__text">
+            <span class="brand__name">Uni<span>X</span> Driver</span>
+            <span class="brand__sub">Cartagena · Colombia</span>
+          </span>
+        </a>
+        <p>UniX Driver es un prototipo académico que explora cómo una experiencia digital centralizada puede ayudar a entender y comparar alternativas de movilidad urbana en Cartagena de Indias. Todas las tarifas, ofertas y recorridos mostrados son ilustrativos.</p>
+      </div>
+      <nav class="footer-col" aria-label="Secciones del sitio">
+        <h4>Secciones</h4>
+        <a href="#inicio">Inicio</a>
+        <a href="#propuesta">Propuesta de valor</a>
+        <a href="#como-funciona">Cómo funciona</a>
+        <a href="#demo">Demostración</a>
+      </nav>
+      <nav class="footer-col" aria-label="Más información">
+        <h4>Proyecto</h4>
+        <a href="#movilidad">Movilidad en Cartagena</a>
+        <a href="#tarifas">Tarifas y categorías</a>
+        <a href="#beneficios">Beneficios del concepto</a>
+        <a href="#proyecto">Sobre el proyecto</a>
+        <a href="#propuesta">Propuesta de valor</a>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <span>© <span id="year">2026</span> UniX Driver · Cartagena de Indias, Colombia</span>
+      <span class="tag tag--dark">Prototipo académico · Sin servicios comerciales</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/js/app.js" defer></script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920" integrity="sha512-L0ha0OXavK/8okipN9F8BtP84dg9DUhPERbBXzwI6dgTA55d2+yweo3pn5CSFYs45/r8md2+xvUPtTdvTNRfjA==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
+</body>
+</html>
+
