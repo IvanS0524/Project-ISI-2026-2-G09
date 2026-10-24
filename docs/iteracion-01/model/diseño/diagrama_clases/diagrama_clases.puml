@@ -4,8 +4,15 @@ title Diagrama de Clases - UnixDriver
 skinparam classAttributeIconSize 0
 
 '========================
-' USUARIOS
+' ROLES Y USUARIOS
 '========================
+
+class Rol {
+    - idRol: int
+    - nombre: String
+    --
+    + consultarPermisos(): void
+}
 
 abstract class Usuario {
     - idUsuario: int
@@ -13,6 +20,9 @@ abstract class Usuario {
     - correo: String
     - contrasena: String
     - telefono: String
+    - fechaRegistro: DateTime
+    - fechaNacimiento: Date
+    - estado: String
     --
     + registrarse(): String
     + iniciarSesion(): boolean
@@ -22,8 +32,8 @@ abstract class Usuario {
 
 class Pasajero {
     --
-    + realizarBusqueda(): BusquedaUnificada
-    + seleccionarOpcion(opcion: OpcionTransporte): Viaje
+    + realizarBusqueda(): Busqueda
+    + seleccionarOferta(oferta: Oferta): Viaje
     + consultarViajes(): List<Viaje>
     + cancelarViaje(viaje: Viaje): void
 }
@@ -38,14 +48,15 @@ class Administrador {
     + generarReportes(): void
 }
 
+Rol "1" -- "0..*" Usuario : asignado a >
 Usuario <|-- Pasajero
 Usuario <|-- Administrador
 
 '========================
-' BUSQUEDA Y RESULTADOS
+' BUSQUEDA Y OFERTAS
 '========================
 
-class BusquedaUnificada {
+class Busqueda {
     - idBusqueda: int
     - origen: String
     - destino: String
@@ -53,25 +64,25 @@ class BusquedaUnificada {
     - estado: EstadoBusqueda
     --
     + validarDatos(): boolean
-    + consultarOpciones(): List<OpcionTransporte>
-    + obtenerResultados(): List<OpcionTransporte>
-    + cancelarBusqueda(): void
+    + consultarOfertas(): List<Oferta>
+    + obtenerResultados(): List<Oferta>
 }
 
-class OpcionTransporte {
-    - idOpcion: int
+class Oferta {
+    - idOferta: int
     - precioEstimado: Decimal
     - tiempoEstimado: int
     - distancia: Decimal
-    - estado: EstadoOpcion
+    - fechaHoraRespuesta: DateTime
+    - estado: EstadoOferta
     --
     + consultarDetalles(): void
     + seleccionar(): void
-    + compararPrecio(): Decimal
+    + compararOferta(): Decimal
 }
 
-Pasajero "1" -- "0..*" BusquedaUnificada : realiza >
-BusquedaUnificada "1" *-- "1..*" OpcionTransporte : genera >
+Pasajero "1" -- "0..*" Busqueda : realiza >
+Busqueda "1" *-- "0..*" Oferta : genera >
 
 '========================
 ' PLATAFORMAS EXTERNAS
@@ -88,7 +99,7 @@ class Plataforma {
     + verificarDisponibilidad(): boolean
 }
 
-Plataforma "1" -- "0..*" OpcionTransporte : ofrece >
+Plataforma "1" -- "0..*" Oferta : ofrece >
 
 '========================
 ' CONDUCTOR Y VEHICULO
@@ -114,8 +125,8 @@ class Vehiculo {
     + consultarDetalles(): void
 }
 
-OpcionTransporte "0..*" --> "0..1" Conductor : asigna >
-OpcionTransporte "0..*" --> "0..1" Vehiculo : utiliza >
+Oferta "0..*" --> "1" Conductor : asigna >
+Oferta "0..*" --> "1" Vehiculo : utiliza >
 
 '========================
 ' VIAJE
@@ -134,8 +145,7 @@ class Viaje {
     + consultarEstado(): EstadoViaje
 }
 
-Pasajero "1" -- "0..*" Viaje : realiza >
-OpcionTransporte "1" --> "0..1" Viaje : seleccionada para >
+Oferta "1" --> "0..1" Viaje : seleccionada para >
 
 '========================
 ' CONFIGURACION DE COMISION
@@ -161,14 +171,11 @@ Administrador "1" -- "0..*" ConfiguracionComision : administra >
 
 class Comision {
     - idComision: int
-    - idViaje: int
-    - idConfiguracion: int
     - porcentajeAplicado: Decimal
-    - monto: Decimal
     - fechaGeneracion: DateTime
     - estado: EstadoComision
     --
-    + calcularComision(): Decimal
+    + calcularComision(precioFinal: Decimal): Decimal
     + registrarComision(): void
 }
 
@@ -181,32 +188,36 @@ ConfiguracionComision "1" -- "0..*" Comision : se aplica en >
 
 enum EstadoBusqueda {
     PENDIENTE
+    PROCESANDO
     COMPLETADA
-    CANCELADA
+    SIN_RESULTADOS
+    ERROR
 }
 
-enum EstadoOpcion {
+enum EstadoOferta {
     DISPONIBLE
     SELECCIONADA
     NO_DISPONIBLE
+    EXPIRADA
 }
 
 enum EstadoPlataforma {
-    ACTIVA
-    INACTIVA
+    ACTIVO
+    INACTIVO
 }
 
 enum EstadoViaje {
     SOLICITADO
+    ACEPTADO
     EN_CURSO
-    FINALIZADO
+    COMPLETADO
     CANCELADO
 }
 
 enum EstadoComision {
-    PENDIENTE
-    PROCESADA
-    CANCELADA
+    GENERADA
+    PAGADA
+    ANULADA
 }
 
 enum EstadoConfiguracion {

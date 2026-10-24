@@ -4,50 +4,36 @@ title Modelo Entidad-Relación - UnixDriver
 hide circle
 skinparam linetype ortho
 
+entity ROL {
+    * id_rol : INT <<PK>>
+    --
+    * nombre : VARCHAR(30) <<UNIQUE>>
+}
+
 entity USUARIO {
     * id_usuario : INT <<PK>>
     --
-    nombre : VARCHAR(100)
-    correo : VARCHAR(150) <<UNIQUE>>
-    contrasena : VARCHAR(255)
+    * nombre : VARCHAR(100)
+    * correo : VARCHAR(150) <<UNIQUE>>
+    * contrasena : VARCHAR(255)
     telefono : VARCHAR(20)
-    rol : VARCHAR(20)
+    * fecha_registro : TIMESTAMP
+    fecha_nacimiento : DATE
+    * estado : VARCHAR(20)
+    * id_rol : INT <<FK>>
 }
 
 entity PLATAFORMA {
     * id_plataforma : INT <<PK>>
     --
-    nombre : VARCHAR(50)
-    estado : VARCHAR(20)
-}
-
-entity BUSQUEDA {
-    * id_busqueda : INT <<PK>>
-    --
-    origen : VARCHAR(255)
-    destino : VARCHAR(255)
-    fecha_hora : DATETIME
-    estado : VARCHAR(20)
-    id_usuario : INT <<FK>>
-}
-
-entity OPCION_TRANSPORTE {
-    * id_opcion : INT <<PK>>
-    --
-    precio_estimado : DECIMAL(10,2)
-    tiempo_estimado : INT
-    distancia : DECIMAL(10,2)
-    estado : VARCHAR(20)
-    id_busqueda : INT <<FK>>
-    id_plataforma : INT <<FK>>
-    id_conductor : INT <<FK>>
-    id_vehiculo : INT <<FK>>
+    * nombre : VARCHAR(50) <<UNIQUE>>
+    * estado : VARCHAR(20)
 }
 
 entity CONDUCTOR {
     * id_conductor : INT <<PK>>
     --
-    nombre : VARCHAR(100)
+    * nombre : VARCHAR(100)
     calificacion : DECIMAL(3,2)
     telefono : VARCHAR(20)
 }
@@ -55,57 +41,80 @@ entity CONDUCTOR {
 entity VEHICULO {
     * id_vehiculo : INT <<PK>>
     --
-    placa : VARCHAR(10) <<UNIQUE>>
-    marca : VARCHAR(50)
-    modelo : VARCHAR(50)
-    tipo : VARCHAR(50)
+    * placa : VARCHAR(10) <<UNIQUE>>
+    * marca : VARCHAR(25)
+    * modelo : VARCHAR(25)
+    * tipo : VARCHAR(25)
+}
+
+entity BUSQUEDA {
+    * id_busqueda : INT <<PK>>
+    --
+    * origen : VARCHAR(255)
+    * destino : VARCHAR(255)
+    * fecha_hora : TIMESTAMP
+    * estado : VARCHAR(20)
+    * id_usuario : INT <<FK>>
+}
+
+entity OFERTA {
+    * id_oferta : INT <<PK>>
+    --
+    * precio_estimado : DECIMAL(10,2)
+    * tiempo_estimado : INT
+    * distancia : DECIMAL(10,2)
+    * fecha_hora_respuesta : TIMESTAMP
+    * estado : VARCHAR(20)
+    * id_busqueda : INT <<FK>>
+    * id_plataforma : INT <<FK>>
+    * id_conductor : INT <<FK>>
+    * id_vehiculo : INT <<FK>>
 }
 
 entity VIAJE {
     * id_viaje : INT <<PK>>
     --
-    fecha_hora_inicio : DATETIME
-    fecha_hora_fin : DATETIME
+    fecha_hora_inicio : TIMESTAMP
+    fecha_hora_fin : TIMESTAMP
     precio_final : DECIMAL(10,2)
-    estado : VARCHAR(20)
-    id_usuario : INT <<FK>>
-    id_opcion : INT <<FK>>
+    * estado : VARCHAR(20)
+    * id_oferta : INT <<FK, UNIQUE>>
 }
 
 entity CONFIGURACION_COMISION {
     * id_configuracion : INT <<PK>>
     --
-    porcentaje : DECIMAL(5,2)
-    fecha_inicio : DATETIME
-    fecha_fin : DATETIME
-    estado : VARCHAR(20)
-    id_administrador : INT <<FK>>
+    * porcentaje : DECIMAL(5,2)
+    * fecha_inicio : TIMESTAMP
+    fecha_fin : TIMESTAMP
+    * estado : VARCHAR(20)
+    * id_administrador : INT <<FK>>
 }
 
 entity COMISION {
     * id_comision : INT <<PK>>
     --
-    porcentaje_aplicado : DECIMAL(5,2)
-    monto : DECIMAL(10,2)
-    fecha_generacion : DATETIME
-    estado : VARCHAR(20)
-    id_viaje : INT <<FK>>
-    id_configuracion : INT <<FK>>
+    * porcentaje_aplicado : DECIMAL(5,2)
+    * fecha_generacion : TIMESTAMP
+    * estado : VARCHAR(20)
+    * id_viaje : INT <<FK, UNIQUE>>
+    * id_configuracion : INT <<FK>>
 }
 
+' Relaciones y multiplicidades alineadas con schema.sql
+ROL ||--o{ USUARIO : asignado_a
+
 USUARIO ||--o{ BUSQUEDA : realiza
-USUARIO ||--o{ VIAJE : realiza
 
-BUSQUEDA ||--|{ OPCION_TRANSPORTE : genera
-PLATAFORMA ||--o{ OPCION_TRANSPORTE : ofrece
+BUSQUEDA ||--o{ OFERTA : genera
+PLATAFORMA ||--o{ OFERTA : ofrece
+CONDUCTOR ||--o{ OFERTA : asignado_en
+VEHICULO ||--o{ OFERTA : asignado_en
 
-CONDUCTOR ||--o{ OPCION_TRANSPORTE : aparece_en
-VEHICULO ||--o{ OPCION_TRANSPORTE : aparece_en
-
-OPCION_TRANSPORTE ||--o| VIAJE : seleccionada_para
+OFERTA ||--o| VIAJE : seleccionada_para
 
 USUARIO ||--o{ CONFIGURACION_COMISION : administra
-CONFIGURACION_COMISION ||--o{ COMISION : establece
+CONFIGURACION_COMISION ||--o{ COMISION : rige
 VIAJE ||--o| COMISION : genera
 
 @enduml
