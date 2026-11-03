@@ -71,7 +71,7 @@ CREATE TABLE plataforma (
         CHECK (estado IN ('ACTIVO', 'INACTIVO'))
 );
 
-COMMENT ON TABLE plataforma IS 'Proveedores externos de transporte (ej. Uber, DiDi, inDrive).';
+COMMENT ON TABLE plataforma IS 'Proveedores externos de transporte (Uber, DiDi, inDrive).';
 COMMENT ON COLUMN plataforma.nombre IS 'Nombre comercial de la plataforma externa.';
 COMMENT ON COLUMN plataforma.estado IS 'Indica si el adaptador de la plataforma está habilitado para consultas.';
 
