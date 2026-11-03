@@ -37,13 +37,12 @@ INSERT INTO usuario (nombre, correo, contrasena, telefono, fecha_nacimiento, est
 ('Jorge Herrera (Admin)', 'admin.jorge@unixdriver.co', '$2b$12$KIX/SimulatedHashAdminJorge12345678', '3209998877', '1993-07-25', 'ACTIVO', 2);
 
 -- -----------------------------------------------------------------------------
--- 3. Tabla: plataforma (IDs generados: 1 = Uber, 2 = DiDi, 3 = inDrive, 4 = Cabify)
+-- 3. Tabla: plataforma (IDs generados: 1 = Uber, 2 = DiDi, 3 = inDrive)
 -- -----------------------------------------------------------------------------
 INSERT INTO plataforma (nombre, estado) VALUES
 ('Uber', 'ACTIVO'),
 ('DiDi', 'ACTIVO'),
-('inDrive', 'ACTIVO'),
-('Cabify', 'INACTIVO');
+('inDrive', 'ACTIVO');
 
 -- -----------------------------------------------------------------------------
 -- 4. Tabla: conductor (IDs generados: 1 al 5)

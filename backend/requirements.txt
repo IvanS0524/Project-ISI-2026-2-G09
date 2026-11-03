@@ -1,0 +1,11 @@
+# Framework API REST y servidor ASGI
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+
+# ORM y conector para PostgreSQL
+sqlalchemy>=2.0.30
+psycopg2-binary>=2.9.9
+
+# Validación de esquemas y variables de entorno
+pydantic>=2.9.0
+python-dotenv>=1.0.1

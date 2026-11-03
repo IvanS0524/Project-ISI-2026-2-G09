@@ -27,7 +27,7 @@ El esquema está compuesto por **10 tablas** organizadas según su orden de depe
 | :---: | :--- | :--- | :--- |
 | 1 | `rol` | Catálogo de roles del sistema (ej. `PASAJERO`, `ADMINISTRADOR`). | *Ninguna* |
 | 2 | `usuario` | Cuentas de usuarios, credenciales protegidas y datos de perfil. | `id_rol` → `rol` |
-| 3 | `plataforma` | Proveedores externos de transporte (ej. Uber, DiDi, inDrive). | *Ninguna* |
+| 3 | `plataforma` | Proveedores externos de transporte (Uber, DiDi, inDrive). | *Ninguna* |
 | 4 | `conductor` | Información y calificación del conductor asociado a una oferta. | *Ninguna* |
 | 5 | `vehiculo` | Datos del vehículo (placa única, marca, modelo, tipo) de una oferta. | *Ninguna* |
 | 6 | `busqueda` | Registro de consultas unificadas de origen y destino realizadas por pasajeros. | `id_usuario` → `usuario` |
