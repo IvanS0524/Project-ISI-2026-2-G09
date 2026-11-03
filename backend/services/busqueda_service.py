@@ -238,14 +238,13 @@ def ejecutar_busqueda_unificada(db: Session, datos: BusquedaCrear) -> Busqueda:
         "uber": {"base": 5200, "km": 1650, "delta_min": 0},
         "didi": {"base": 4600, "km": 1500, "delta_min": 2},
         "indrive": {"base": 4800, "km": 1550, "delta_min": -2},
-        "cabify": {"base": 5500, "km": 1700, "delta_min": 1},
     }
 
     for idx, plataforma in enumerate(plataformas):
         clave_plat = plataforma.nombre.strip().lower()
-        config_tarifa = tarifas_proveedor.get(
-            clave_plat, {"base": 5000, "km": 1600, "delta_min": 0}
-        )
+        if clave_plat not in tarifas_proveedor:
+            continue
+        config_tarifa = tarifas_proveedor[clave_plat]
 
         # Redondear a centenas de pesos colombianos (COP)
         precio_bruto = config_tarifa["base"] + (

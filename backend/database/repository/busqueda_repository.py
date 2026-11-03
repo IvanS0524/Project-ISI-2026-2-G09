@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import Optional
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.models.busqueda import (
@@ -12,12 +13,17 @@ from backend.models.busqueda import (
 )
 from backend.schemas.busqueda import BusquedaCrear
 
+PLATAFORMAS_SOPORTADAS = ("uber", "didi", "indrive")
+
 
 def listar_plataformas_activas(db: Session) -> list[Plataforma]:
-    """Obtiene todas las plataformas externas con estado 'ACTIVO'."""
+    """Obtiene las plataformas soportadas (Uber, DiDi, inDrive) con estado 'ACTIVO'."""
     return (
         db.query(Plataforma)
-        .filter(Plataforma.estado == "ACTIVO")
+        .filter(
+            Plataforma.estado == "ACTIVO",
+            func.lower(Plataforma.nombre).in_(PLATAFORMAS_SOPORTADAS),
+        )
         .order_by(Plataforma.id_plataforma.asc())
         .all()
     )
