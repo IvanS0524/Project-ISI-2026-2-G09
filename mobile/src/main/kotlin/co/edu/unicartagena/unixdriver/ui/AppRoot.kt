@@ -71,7 +71,11 @@ fun AppRoot(store: AppStore) {
                     Route.Register -> Frame("Crear cuenta", store) { RegisterScreen(store) }
                     Route.Home -> HomeScreen(store)
                     is Route.Offers -> Frame("Ofertas recibidas", store) { OffersScreen(store, route.query) }
-                    Route.Trip -> Frame("Tu viaje", store, back = false) { TripScreen(store) }
+                    Route.Trip -> Frame(
+                        if (store.activeTrip?.estado == co.edu.unicartagena.unixdriver.model.TripStatus.SOLICITADO) "Solicitar viaje" else "Tu viaje",
+                        store,
+                        back = false,
+                    ) { TripScreen(store) }
                     Route.Payment -> Frame("Cobro y comisión", store, back = false) { PaymentScreen(store) }
                     is Route.TripDetail -> Frame("Detalle del viaje", store) { TripDetailScreen(store, route.tripId) }
                 }
