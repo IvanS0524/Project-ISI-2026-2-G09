@@ -10,8 +10,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -73,7 +73,7 @@ fun TripScreen(store: AppStore) {
             EmptyState(
                 icon = Icons.Filled.DirectionsCar,
                 title = "No tienes un viaje activo",
-                message = "Busca transporte para comparar ofertas y pedir tu viaje.",
+                message = "Busca transporte para comparar ofertas y solicitar tu viaje.",
                 actionLabel = "Ir al inicio",
                 onAction = { store.resetTo(Route.Home) },
             )
@@ -91,8 +91,8 @@ fun TripScreen(store: AppStore) {
         Step("Solicitud distribuida", "Enviada a Uber, DiDi e inDrive.", StepState.Done),
         Step("Conductor asignado", "${platform.nombre} aceptó el viaje.", StepState.Done),
         Step(
-            "Viaje en curso",
-            if (running) "En ruta a ${trip.destino}." else "Esperando a que inicies el viaje.",
+            if (running) "Viaje en curso" else "Viaje solicitado",
+            if (running) "En ruta a ${trip.destino}." else "Esperando confirmación para solicitar el viaje.",
             StepState.Active,
         ),
         Step("Cobro y comisión", "Se calculan al finalizar el viaje.", StepState.Pending),
@@ -103,7 +103,7 @@ fun TripScreen(store: AppStore) {
             Banner("Llegas en aproximadamente $remaining min.", title = "En ruta a ${trip.destino}")
         } else {
             Banner(
-                "Destino: ${trip.destino} · llega en ${trip.tiempoLlegada} min.",
+                "Origen: ${trip.origen} · Destino: ${trip.destino} · llega en ${trip.tiempoLlegada} min.",
                 tone = Tone.Success,
                 title = "${platform.nombre} asignó un conductor",
             )
@@ -136,7 +136,7 @@ fun TripScreen(store: AppStore) {
 
         if (!running) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                UxButton("Iniciar viaje", { store.startTrip() }, Modifier.weight(1f), icon = Icons.Filled.PlayArrow)
+                UxButton("Solicitar viaje", { store.startTrip() }, Modifier.weight(1f), icon = Icons.Filled.CheckCircle)
                 UxButton("Cancelar", { showCancel = true }, variant = ButtonVariant.Danger)
             }
         }
@@ -150,7 +150,7 @@ fun TripScreen(store: AppStore) {
     if (showCancel) {
         ConfirmDialog(
             title = "Cancelar viaje",
-            message = "¿Seguro que quieres cancelar este viaje?",
+            message = "¿Seguro que quieres cancelar la solicitud de este viaje?",
             confirmLabel = "Cancelar viaje",
             dismissLabel = "Seguir con el viaje",
             destructive = true,

@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -178,6 +177,6 @@ private fun OfferFooter(sel: TransportOffer, confirming: Boolean, onConfirm: () 
             )
         }
         Text("El precio es estimado. La tarifa final y la comisión se calculan al terminar el viaje.", style = UnixText.Small)
-        UxButton("Confirmar oferta", onConfirm, Modifier.fillMaxWidth(), icon = Icons.Filled.CheckCircle, loading = confirming)
+        UxButton("Solicitar viaje", onConfirm, Modifier.fillMaxWidth(), icon = Icons.Filled.CheckCircle, loading = confirming)
     }
 }
