@@ -1,0 +1,150 @@
+# =============================================================================
+# .gitignore - Proyecto UnixDriver (ISI-2026-2-G09)
+# =============================================================================
+# Reglas de exclusión para proteger credenciales, evitar subir archivos
+# autogenerados/compilados y mantener limpio el historial del repositorio.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1. VARIABLES DE ENTORNO, SECRETOS Y CREDENCIALES
+# -----------------------------------------------------------------------------
+.env
+.env.*
+backend/.env
+backend/.env.*
+*.pem
+*.key
+*credentials*.json
+*secret*
+
+# conservar siempre las plantillas de ejemplo sin secretos reales
+!.env.example
+!backend/.env.example
+
+# -----------------------------------------------------------------------------
+# 2. BACKEND: PYTHON, FASTAPI, SQLALCHEMY Y PYTEST
+# -----------------------------------------------------------------------------
+# Bytecode y cachés de ejecución de Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Entornos virtuales de Python
+.venv/
+venv/
+env/
+ENV/
+backend/.venv/
+backend/venv/
+
+# Empaquetado, distribución y metadatos de pip
+*.egg-info/
+.installed.cfg
+*.egg
+dist/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Pruebas automatizadas y reportes de cobertura
+.pytest_cache/
+**/.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+
+# Tipado estático y linters
+.mypy_cache/
+.dmypy.json
+.ruff_cache/
+.pyre/
+
+# -----------------------------------------------------------------------------
+# 3. MOBILE: ANDROID STUDIO, KOTLIN Y GRADLE
+# -----------------------------------------------------------------------------
+# Configuración local del SDK de Android
+local.properties
+**/local.properties
+
+# Directorios generados por compilación de Gradle y Android
+.gradle/
+**/.gradle/
+build/
+**/build/
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Ejecutables y paquetes compilados de Android
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Archivos de registro y reportes de Android
+output-metadata.json
+lint-results*.html
+lint-results*.xml
+
+# 
+!gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# -----------------------------------------------------------------------------
+# 4. FRONTEND Y HERRAMIENTAS WEB
+# -----------------------------------------------------------------------------
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# -----------------------------------------------------------------------------
+# 5. DOCUMENTACIÓN Y MODELADO: PLANTUML (DSS, CASOS DE USO, CLASES, ER)
+# -----------------------------------------------------------------------------
+# Imágenes y carpetas de previsualización generadas por la extensión PlantUML
+/out/
+out/
+**/out/
+
+# -----------------------------------------------------------------------------
+# 6. ENTORNOS DE DESARROLLO (IDEs: VS CODE, JETBRAINS / ANDROID STUDIO)
+# -----------------------------------------------------------------------------
+# JetBrains / Android Studio / IntelliJ IDEA / PyCharm
+.idea/
+**/.idea/
+*.iml
+*.iws
+*.ipr
+
+# Visual Studio Code
+.vscode/
+**/.vscode/
+*.code-workspace
+
+# Archivos de registro (logs)
+*.log
+logs/
+**/logs/
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+.directory
