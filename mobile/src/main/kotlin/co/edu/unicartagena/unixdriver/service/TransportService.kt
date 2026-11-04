@@ -6,6 +6,7 @@ package co.edu.unicartagena.unixdriver.service
  * funciones por llamadas HTTP; las pantallas no cambian.
  */
 
+import co.edu.unicartagena.unixdriver.data.BarriosCatalog
 import co.edu.unicartagena.unixdriver.data.DESTINATIONS
 import co.edu.unicartagena.unixdriver.data.DRIVERS
 import co.edu.unicartagena.unixdriver.data.PLATFORM_IDS
@@ -29,16 +30,19 @@ object TransportService {
         return h
     }
 
-    fun distanceFor(destino: String): Double {
+    fun distanceFor(origen: String, destino: String): Double {
+        BarriosCatalog.distanceBetweenKm(origen, destino)?.let { return it }
         val key = normalize(destino)
         DESTINATIONS.firstOrNull { normalize(it.nombre) == key }?.let { return it.km }
-        return 3 + (hash(key) % 90) / 10.0 // entre 3.0 y 11.9 km para destinos no catalogados
+        return 3 + (hash("${normalize(origen)}-$key") % 90) / 10.0
     }
+
+    fun distanceFor(destino: String): Double = distanceFor("", destino)
 
     fun buildOffer(platform: PlatformId, query: SearchQuery): TransportOffer {
         val info = platformInfo(platform)
-        val km = distanceFor(query.destino)
-        val seed = hash("$platform-${normalize(query.destino)}-${query.vehicleType}")
+        val km = distanceFor(query.origen, query.destino)
+        val seed = hash("$platform-${normalize(query.origen)}-${normalize(query.destino)}-${query.vehicleType}")
         val pool = DRIVERS.getValue(query.vehicleType)
         return TransportOffer(
             id = "$platform-$seed",
@@ -80,7 +84,7 @@ object TransportService {
         }
     }
 
-    /** Verifica que la oferta siga vigente antes de confirmarla (flujo alterno A1). */
+    /** Verifica que la oferta siga vigente antes de solicitar el viaje (flujo alterno A1). */
     @Suppress("UNUSED_PARAMETER")
     suspend fun confirmOffer(offer: TransportOffer): Boolean {
         delay(700)

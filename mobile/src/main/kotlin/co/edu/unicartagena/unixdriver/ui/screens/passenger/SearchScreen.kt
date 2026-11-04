@@ -37,7 +37,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import co.edu.unicartagena.unixdriver.data.DESTINATIONS
+import co.edu.unicartagena.unixdriver.data.BarriosCatalog
+import co.edu.unicartagena.unixdriver.data.Destination
 import co.edu.unicartagena.unixdriver.data.ORIGEN_FIJO
 import co.edu.unicartagena.unixdriver.data.PLATFORM_IDS
 import co.edu.unicartagena.unixdriver.data.POPULAR_DESTINATIONS
@@ -69,21 +70,26 @@ import co.edu.unicartagena.unixdriver.util.normalize
 @Composable
 fun SearchScreen(store: AppStore) {
     var vehicle by remember { mutableStateOf(VehicleType.MOTO) }
+    var origen by remember { mutableStateOf(ORIGEN_FIJO) }
     var destino by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf<String?>(null) }
+    var origenError by remember { mutableStateOf<String?>(null) }
+    var destinoError by remember { mutableStateOf<String?>(null) }
     var showBell by remember { mutableStateOf(false) }
 
-    val q = normalize(destino)
-    val suggestions = if (q.isEmpty()) emptyList()
-    else DESTINATIONS.filter { normalize(it.nombre).contains(q) && normalize(it.nombre) != q }.take(4)
+    val origenSuggestions = BarriosCatalog.filterSuggestions(origen, limit = 4)
+    val destinoSuggestions = BarriosCatalog.filterSuggestions(destino, limit = 4)
 
     fun search() {
-        if (destino.trim().length < 3) {
-            error = "Escribe el barrio o lugar al que vas (mínimo 3 letras)."
-            return
+        val cleanOrigen = origen.trim()
+        val cleanDestino = destino.trim()
+        origenError = if (cleanOrigen.length < 3) "Escribe el barrio o punto de origen (mínimo 3 letras)." else null
+        destinoError = when {
+            cleanDestino.length < 3 -> "Escribe el barrio o lugar al que vas (mínimo 3 letras)."
+            normalize(cleanOrigen) == normalize(cleanDestino) -> "El origen y el destino no pueden ser el mismo barrio."
+            else -> null
         }
-        error = null
-        store.push(Route.Offers(SearchQuery(ORIGEN_FIJO, destino.trim(), vehicle)))
+        if (origenError != null || destinoError != null) return
+        store.push(Route.Offers(SearchQuery(cleanOrigen, cleanDestino, vehicle)))
     }
 
     val trip = store.activeTrip
@@ -116,8 +122,8 @@ fun SearchScreen(store: AppStore) {
                 alpha = 0.9f,
             )
             Column(Modifier.padding(top = 36.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("¿A dónde vamos?", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = UnixColors.Navy)
-                Text("Compara opciones de viaje en un solo lugar", fontSize = 16.sp, color = UnixColors.Muted)
+                Text("Solicitar viaje", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = UnixColors.Navy)
+                Text("Elige tu origen y destino en Cartagena para comparar ofertas", fontSize = 16.sp, color = UnixColors.Muted)
             }
         }
 
@@ -134,45 +140,45 @@ fun SearchScreen(store: AppStore) {
         UxCard {
             UxTextField(
                 label = "Origen",
-                value = ORIGEN_FIJO,
-                onValueChange = {},
+                value = origen,
+                onValueChange = { origen = it; origenError = null },
+                placeholder = "Barrio o punto de partida",
                 leadingIcon = Icons.Filled.GpsFixed,
                 iconTint = UnixColors.Target,
-                enabled = false,
-            )
-            UxTextField(
-                label = "Destino",
-                value = destino,
-                onValueChange = { destino = it; error = null },
-                placeholder = "Barrio o lugar de destino",
-                leadingIcon = Icons.Filled.LocationOn,
-                iconTint = UnixColors.Pin,
-                error = error,
+                error = origenError,
             )
 
-            if (suggestions.isNotEmpty()) {
-                val shape = RoundedCornerShape(14.dp)
-                Column(Modifier.fillMaxWidth().border(1.dp, UnixColors.Line, shape).background(UnixColors.Field, shape)) {
-                    suggestions.forEach { s ->
-                        Row(
-                            Modifier.fillMaxWidth().clickable { destino = s.nombre }.padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(Icons.Filled.LocationOn, contentDescription = null, tint = UnixColors.Blue)
-                            Text(s.nombre, style = UnixText.Body)
-                        }
-                    }
+            if (origenSuggestions.isNotEmpty()) {
+                SuggestionList(origenSuggestions) { selected ->
+                    origen = selected.nombre
+                    origenError = null
                 }
             }
 
-            Text("Sugerencias de destino", fontSize = 15.sp, color = UnixColors.Muted)
+            UxTextField(
+                label = "Destino",
+                value = destino,
+                onValueChange = { destino = it; destinoError = null },
+                placeholder = "Barrio o lugar de destino",
+                leadingIcon = Icons.Filled.LocationOn,
+                iconTint = UnixColors.Pin,
+                error = destinoError,
+            )
+
+            if (destinoSuggestions.isNotEmpty()) {
+                SuggestionList(destinoSuggestions) { selected ->
+                    destino = selected.nombre
+                    destinoError = null
+                }
+            }
+
+            Text("Destinos frecuentes en Cartagena", fontSize = 15.sp, color = UnixColors.Muted)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 POPULAR_DESTINATIONS.forEach { d ->
                     UxChip(
                         d.nombre,
                         selected = normalize(destino) == normalize(d.nombre),
-                        onClick = { destino = d.nombre },
+                        onClick = { destino = d.nombre; destinoError = null },
                         icon = Icons.Filled.LocationOn,
                     )
                 }
@@ -187,7 +193,7 @@ fun SearchScreen(store: AppStore) {
                 onSelect = { vehicle = it },
             )
 
-            UxButton("Buscar ofertas", ::search, Modifier.fillMaxWidth(), icon = Icons.Filled.Search)
+            UxButton("Solicitar viaje", ::search, Modifier.fillMaxWidth(), icon = Icons.Filled.Search)
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -214,6 +220,28 @@ fun SearchScreen(store: AppStore) {
 
     if (showBell) {
         NoticeDialog("Notificaciones", "No tienes notificaciones nuevas.", "Entendido", onClose = { showBell = false })
+    }
+}
+
+@Composable
+private fun SuggestionList(suggestions: List<Destination>, onSelect: (Destination) -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
+    Column(Modifier.fillMaxWidth().border(1.dp, UnixColors.Line, shape).background(UnixColors.Field, shape)) {
+        suggestions.forEach { s ->
+            Row(
+                Modifier.fillMaxWidth().clickable { onSelect(s) }.padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.LocationOn, contentDescription = null, tint = UnixColors.Blue)
+                Column(Modifier.weight(1f)) {
+                    Text(s.nombre, style = UnixText.Body)
+                    if (s.localidad.isNotBlank()) {
+                        Text(s.localidad, style = UnixText.Small)
+                    }
+                }
+            }
+        }
     }
 }
 
