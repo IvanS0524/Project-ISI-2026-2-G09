@@ -196,10 +196,7 @@ fun SearchScreen(store: AppStore) {
             UxButton("Solicitar viaje", ::search, Modifier.fillMaxWidth(), icon = Icons.Filled.Search)
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("Plataformas conectadas", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = UnixColors.Navy)
-            Text("Simulación académica", fontSize = 15.sp, color = UnixColors.Muted)
-        }
+        Text("Plataformas conectadas", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = UnixColors.Navy)
         PLATFORM_IDS.forEach { id ->
             val shape = RoundedCornerShape(20.dp)
             Row(
@@ -208,10 +205,7 @@ fun SearchScreen(store: AppStore) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 PlatformMark(id, 52.dp)
-                Column(Modifier.weight(1f)) {
-                    Text(platformInfo(id).nombre, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = UnixColors.Navy)
-                    Text("Simulación académica", fontSize = 14.sp, color = UnixColors.Muted)
-                }
+                Text(platformInfo(id).nombre, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = UnixColors.Navy, modifier = Modifier.weight(1f))
                 AvailableBadge()
                 Icon(Icons.Filled.ChevronRight, contentDescription = null, tint = UnixColors.Placeholder)
             }
@@ -234,12 +228,7 @@ private fun SuggestionList(suggestions: List<Destination>, onSelect: (Destinatio
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Filled.LocationOn, contentDescription = null, tint = UnixColors.Blue)
-                Column(Modifier.weight(1f)) {
-                    Text(s.nombre, style = UnixText.Body)
-                    if (s.localidad.isNotBlank()) {
-                        Text(s.localidad, style = UnixText.Small)
-                    }
-                }
+                Text(s.nombre, style = UnixText.Body)
             }
         }
     }

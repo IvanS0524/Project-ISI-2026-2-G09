@@ -43,16 +43,13 @@ import co.edu.unicartagena.unixdriver.util.formatCOP
 
 // ---------- Marca ----------
 
-/** Logo (cuadrado azul con la U) junto al nombre y el subtítulo. */
+/** Logo (cuadrado azul con la U) junto al nombre. */
 @Composable
 fun BrandMark(size: Dp = 52.dp, showName: Boolean = true) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         ArtImage(LOGO_PATH, Modifier.size(size))
         if (showName) {
-            Column {
-                Text("UniX Driver", color = UnixColors.Navy, fontWeight = FontWeight.ExtraBold, fontSize = (size.value * 0.46f).sp)
-                Text("Cartagena Movilidad", color = UnixColors.Muted, fontSize = (size.value * 0.27f).sp)
-            }
+            Text("UniX Driver", color = UnixColors.Navy, fontWeight = FontWeight.ExtraBold, fontSize = (size.value * 0.46f).sp)
         }
     }
 }
