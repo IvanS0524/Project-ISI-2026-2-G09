@@ -9,3 +9,6 @@ psycopg2-binary>=2.9.9
 # Validación de esquemas y variables de entorno
 pydantic>=2.9.0
 python-dotenv>=1.0.1
+
+# SDK oficial de AWS para Python (Amazon S3)
+boto3>=1.34.0
