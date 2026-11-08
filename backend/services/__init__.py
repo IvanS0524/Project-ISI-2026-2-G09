@@ -10,4 +10,5 @@ __all__ = [
     "busqueda_service",
     "viaje_service",
     "comision_service",
+    "s3_service",
 ]
