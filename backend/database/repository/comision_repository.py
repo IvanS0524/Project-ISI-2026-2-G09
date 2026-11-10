@@ -31,7 +31,16 @@ def listar_configuraciones(db: Session) -> list[ConfiguracionComision]:
 def crear_configuracion_comision(
     db: Session, datos: ConfiguracionComisionCrear
 ) -> ConfiguracionComision:
-    """Crea una nueva regla de porcentaje de comisión por parte de un administrador."""
+    """
+    Crea una nueva regla de porcentaje de comisión por parte de un administrador.
+    Si la nueva regla entra como 'ACTIVA', desactiva las anteriores en la misma transacción
+    para garantizar que exista una única configuración vigente.
+    """
+    if datos.estado == "ACTIVA":
+        db.query(ConfiguracionComision).filter(
+            ConfiguracionComision.estado == "ACTIVA"
+        ).update({ConfiguracionComision.estado: "INACTIVA"}, synchronize_session=False)
+
     nueva_config = ConfiguracionComision(
         porcentaje=datos.porcentaje,
         fecha_inicio=datos.fecha_inicio,
@@ -63,6 +72,11 @@ def crear_comision_viaje(
     db.commit()
     db.refresh(nueva_comision)
     return nueva_comision
+
+
+def obtener_comision_por_viaje(db: Session, id_viaje: int) -> Optional[Comision]:
+    """Obtiene la comisión asociada a un viaje (relación 1:1), si existe."""
+    return db.query(Comision).filter(Comision.id_viaje == id_viaje).first()
 
 
 def listar_comisiones(db: Session) -> list[Comision]:

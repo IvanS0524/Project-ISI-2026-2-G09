@@ -12,6 +12,15 @@ from backend.database.repository import (
 from backend.models.viaje import Viaje
 from backend.schemas.viaje import ViajeActualizarEstado, ViajeCrear
 
+# Máquina de estados del viaje: estado actual -> estados destino permitidos.
+TRANSICIONES_VIAJE: dict[str, set[str]] = {
+    "SOLICITADO": {"ACEPTADO", "EN_CURSO", "COMPLETADO", "CANCELADO"},
+    "ACEPTADO": {"EN_CURSO", "COMPLETADO", "CANCELADO"},
+    "EN_CURSO": {"COMPLETADO", "CANCELADO"},
+    "COMPLETADO": set(),
+    "CANCELADO": set(),
+}
+
 
 def solicitar_viaje(db: Session, datos: ViajeCrear) -> Viaje:
     """
@@ -40,12 +49,14 @@ def solicitar_viaje(db: Session, datos: ViajeCrear) -> Viaje:
             detail="Esta oferta ya fue seleccionada previamente para un viaje.",
         )
 
-    return viaje_repository.crear_viaje(
+    viaje = viaje_repository.crear_viaje(
         db=db,
         datos=datos,
         estado="SOLICITADO",
         fecha_hora_inicio=datetime.now(),
     )
+    busqueda_repository.actualizar_estado_oferta(db, oferta, "SELECCIONADA")
+    return viaje
 
 
 def obtener_viaje(db: Session, id_viaje: int) -> Viaje:
@@ -79,6 +90,12 @@ def actualizar_estado_viaje(
     """
     viaje = obtener_viaje(db, id_viaje)
 
+    if datos.estado != viaje.estado and datos.estado not in TRANSICIONES_VIAJE.get(viaje.estado, set()):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Transición de estado no permitida: {viaje.estado} -> {datos.estado}.",
+        )
+
     if datos.estado == "COMPLETADO":
         if datos.fecha_hora_fin is None:
             datos.fecha_hora_fin = datetime.now()
@@ -102,7 +119,7 @@ def actualizar_estado_viaje(
         )
         config_activa = comision_repository.obtener_configuracion_activa(db)
         if not comision_existente and config_activa:
-            comision_repository.crear_comision(
+            comision_repository.crear_comision_viaje(
                 db=db,
                 id_viaje=viaje_actualizado.id_viaje,
                 id_configuracion=config_activa.id_configuracion,

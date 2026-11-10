@@ -1,13 +1,15 @@
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Any, Optional
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from dotenv import load_dotenv
 
-load_dotenv("backend/.env")
+ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=ENV_PATH)
 
 logger = logging.getLogger(__name__)
 

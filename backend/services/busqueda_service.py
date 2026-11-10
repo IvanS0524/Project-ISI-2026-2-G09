@@ -279,3 +279,15 @@ def ejecutar_busqueda_unificada(db: Session, datos: BusquedaCrear) -> Busqueda:
     )
     busqueda.ofertas.sort(key=_calcular_puntaje_recomendacion)
     return busqueda
+
+
+def obtener_busqueda_por_id(db: Session, id_busqueda: int):
+    """Recupera una búsqueda por su ID y ordena sus ofertas por puntaje de recomendación."""
+    busqueda = busqueda_repository.obtener_busqueda_por_id(db, id_busqueda)
+    if not busqueda:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"La búsqueda con id {id_busqueda} no existe.",
+        )
+    busqueda.ofertas.sort(key=_calcular_puntaje_recomendacion)
+    return busqueda
