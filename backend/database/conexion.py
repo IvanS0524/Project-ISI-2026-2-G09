@@ -1,25 +1,45 @@
 import os
 from pathlib import Path
 
+import boto3
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-# Carga las variables de entorno desde backend/.env
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+USE_RDS_IAM = os.getenv("USE_RDS_IAM", "false").lower() == "true"
 
-if not DATABASE_URL:
-    raise RuntimeError(
-        "DATABASE_URL no está configurada. Cree backend/.env a partir de "
-        "backend/.env.example."
-    )
+if USE_RDS_IAM:
+    RDS_HOST = os.getenv("RDS_HOST", "").strip()
+    RDS_PORT = int(os.getenv("RDS_PORT", "5432"))
+    RDS_DB = os.getenv("RDS_DB", "postgres").strip()
+    RDS_USER = os.getenv("RDS_USER", "postgres").strip()
+    AWS_REGION = os.getenv("AWS_REGION", "us-east-2").strip()
 
-# Motor de conexión a PostgreSQL
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+    DATABASE_URL = f"postgresql://{RDS_USER}@{RDS_HOST}:{RDS_PORT}/{RDS_DB}?sslmode=require"
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
-# Fábrica de sesiones para interactuar con la base de datos
+    @event.listens_for(engine, "do_connect")
+    def generar_token_iam_rds(dialect, conn_rec, cargs, cparams):
+        rds_client = boto3.client(
+            "rds",
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", "").strip(),
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", "").strip(),
+            region_name=AWS_REGION,
+        )
+        cparams["password"] = rds_client.generate_db_auth_token(
+            DBHostname=RDS_HOST,
+            Port=RDS_PORT,
+            DBUsername=RDS_USER,
+            Region=AWS_REGION,
+        )
+else:
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL no está configurada en backend/.env")
+    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

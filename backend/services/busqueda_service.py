@@ -9,6 +9,7 @@ from typing import Any, Optional
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from backend.services.s3_service import descargar_barrios_desde_s3
 from backend.database.repository import busqueda_repository, usuario_repository
 from backend.models.busqueda import Busqueda, Oferta
 from backend.schemas.busqueda import BusquedaCrear
@@ -30,12 +31,17 @@ def _normalizar_texto(texto: str) -> str:
 
 @lru_cache(maxsize=1)
 def cargar_barrios_cartagena() -> list[dict[str, Any]]:
-    """Carga y ordena alfabéticamente los 212 barrios oficiales desde el JSON."""
-    if not RUTA_BARRIOS_JSON.exists():
-        return []
+    """
+    Carga y ordena alfabéticamente los 212 barrios oficiales.
+    Prioriza la descarga desde Amazon S3 (boto3) y usa el JSON local como fallback.
+    """
+    datos_crudos = descargar_barrios_desde_s3()
 
-    with open(RUTA_BARRIOS_JSON, mode="r", encoding="utf-8") as archivo:
-        datos_crudos = json.load(archivo)
+    if datos_crudos is None:
+        if not RUTA_BARRIOS_JSON.exists():
+            return []
+        with open(RUTA_BARRIOS_JSON, mode="r", encoding="utf-8") as archivo:
+            datos_crudos = json.load(archivo)
 
     barrios_normalizados = []
     for item in datos_crudos:
@@ -52,7 +58,6 @@ def cargar_barrios_cartagena() -> list[dict[str, Any]]:
             }
         )
 
-    # Garantizar orden alfabético por clave_busqueda para la Búsqueda Binaria O(log n)
     barrios_normalizados.sort(key=lambda b: b["clave_busqueda"])
     return barrios_normalizados
 
@@ -272,5 +277,17 @@ def ejecutar_busqueda_unificada(db: Session, datos: BusquedaCrear) -> Busqueda:
     busqueda = busqueda_repository.actualizar_estado_busqueda(
         db, busqueda, "COMPLETADA"
     )
+    busqueda.ofertas.sort(key=_calcular_puntaje_recomendacion)
+    return busqueda
+
+
+def obtener_busqueda_por_id(db: Session, id_busqueda: int):
+    """Recupera una búsqueda por su ID y ordena sus ofertas por puntaje de recomendación."""
+    busqueda = busqueda_repository.obtener_busqueda_por_id(db, id_busqueda)
+    if not busqueda:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"La búsqueda con id {id_busqueda} no existe.",
+        )
     busqueda.ofertas.sort(key=_calcular_puntaje_recomendacion)
     return busqueda

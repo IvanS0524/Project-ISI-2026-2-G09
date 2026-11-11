@@ -2,10 +2,17 @@
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
 
-# ORM y conector para PostgreSQL
+# ORM y conectores para PostgreSQL (soporte v2 y v3)
 sqlalchemy>=2.0.30
+psycopg[binary]>=3.1.0
 psycopg2-binary>=2.9.9
 
 # Validación de esquemas y variables de entorno
 pydantic>=2.9.0
 python-dotenv>=1.0.1
+
+# SDK oficial de AWS para Python (Amazon S3 y RDS IAM Auth)
+boto3>=1.34.0
+
+# Testing
+pytest>=8.0.0

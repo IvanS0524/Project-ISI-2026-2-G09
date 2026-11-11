@@ -1,0 +1,35 @@
+# =============================================================================
+# .dockerignore - Proyecto UnixDriver (ISI-2026-2-G09)
+# =============================================================================
+
+# Excluir componentes que no forman parte del contenedor del Backend API
+mobile/
+frontend/
+docs/
+database/
+tests/
+.git/
+.github/
+.idea/
+.vscode/
+out/
+
+# Excluir cachés y entornos virtuales de Python
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+**/.pytest_cache/
+.venv/
+venv/
+env/
+backend/.venv/
+backend/venv/
+
+.env
+.env.*
+backend/.env
+backend/.env.*
+*.pem
+*.key

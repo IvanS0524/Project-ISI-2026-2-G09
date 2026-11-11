@@ -1,9 +1,8 @@
 from typing import Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from backend.database.conexion import get_db
-from backend.database.repository import busqueda_repository
 from backend.schemas.busqueda import BusquedaCrear, BusquedaRespuesta
 from backend.services import busqueda_service
 
@@ -50,10 +49,4 @@ def realizar_busqueda_unificada(
 )
 def obtener_busqueda(id_busqueda: int, db: Session = Depends(get_db)):
     """Recupera una búsqueda registrada junto con todas sus ofertas asociadas."""
-    busqueda = busqueda_repository.obtener_busqueda_por_id(db, id_busqueda)
-    if not busqueda:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"La búsqueda con id {id_busqueda} no existe.",
-        )
-    return busqueda
+    return busqueda_service.obtener_busqueda_por_id(db, id_busqueda)
