@@ -1,0 +1,117 @@
+{
+ "meta": {
+  "origen": "Universidad de Cartagena · Piedra de Bolívar",
+  "moneda": "COP",
+  "comision_pct": 0.1,
+  "regla": "El precio depende de los km por carretera desde el origen. La zona (corta/medio/larga) es solo una etiqueta de color."
+ },
+ "modelo": {
+  "tipo": "distancia",
+  "redondeo": 500,
+  "km_recargo": 15,
+  "recargo_lejano_pct": 0.2,
+  "moto": {
+   "base": 3000,
+   "por_km": 1150,
+   "minimo": 5000
+  },
+  "carro": {
+   "base": 9000,
+   "por_km": 2500,
+   "minimo": 14000
+  },
+  "formula": "base + precio por km · redondeo a 500 · +20 % si el trayecto supera 15 km",
+  "referencia": "moto y automóvil · COP"
+ },
+ "corto": {
+  "etiqueta": "Trayecto corto (≤ 3 km)",
+  "moto": 5500,
+  "carro": 14000,
+  "disponible": true
+ },
+ "medio": {
+  "etiqueta": "Trayecto medio (3 – 7 km)",
+  "moto": 9000,
+  "carro": 21500,
+  "disponible": true
+ },
+ "largo": {
+  "etiqueta": "Trayecto largo (> 7 km)",
+  "moto": 14500,
+  "carro": 34000,
+  "disponible": true
+ },
+ "restringido": {
+  "etiqueta": "Ruta extendida (> 15 km)",
+  "moto": 31000,
+  "carro": 71000,
+  "disponible": true
+ },
+ "ejemplos": {
+  "1": {
+   "km": 1,
+   "moto": 5000,
+   "carro": 14000
+  },
+  "2": {
+   "km": 2,
+   "moto": 5500,
+   "carro": 14000
+  },
+  "3": {
+   "km": 3,
+   "moto": 6500,
+   "carro": 16500
+  },
+  "4": {
+   "km": 4,
+   "moto": 7500,
+   "carro": 19000
+  },
+  "5": {
+   "km": 5,
+   "moto": 9000,
+   "carro": 21500
+  },
+  "6": {
+   "km": 6,
+   "moto": 10000,
+   "carro": 24000
+  },
+  "7": {
+   "km": 7,
+   "moto": 11000,
+   "carro": 26500
+  },
+  "8": {
+   "km": 8,
+   "moto": 12000,
+   "carro": 29000
+  },
+  "10": {
+   "km": 10,
+   "moto": 14500,
+   "carro": 34000
+  },
+  "12": {
+   "km": 12,
+   "moto": 17000,
+   "carro": 39000
+  },
+  "15": {
+   "km": 15,
+   "moto": 20000,
+   "carro": 46500
+  },
+  "20": {
+   "km": 20,
+   "moto": 31000,
+   "carro": 71000
+  },
+  "25": {
+   "km": 25,
+   "moto": 38000,
+   "carro": 86000
+  }
+ }
+}

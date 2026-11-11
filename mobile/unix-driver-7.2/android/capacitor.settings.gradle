@@ -1,0 +1,7 @@
+// Generado por `npx cap sync android`. Se deja con rutas relativas al propio
+// proyecto para que funcione en cualquier equipo tras `npm install`.
+include ':capacitor-android'
+project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
+
+include ':capacitor-app'
+project(':capacitor-app').projectDir = new File('../node_modules/@capacitor/app/android')

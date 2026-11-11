@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b1a2e">
+<title>UniX Driver · Cartagena</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles-v2.css">
+<link rel="stylesheet" href="styles-app.css">
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+</head>
+<body>
+<div class="phone-frame">
+
+  <div class="screen-container" id="screens">
+
+    <!-- ============ AUTENTICACIÓN ============ -->
+    <section id="screen0" class="screen active">
+      <div class="auth-wrap">
+        <div class="auth-hero">
+          <span class="auth-logo">U</span>
+          <h1>UniX Driver</h1>
+          <p>Tu transporte en <b>Cartagena</b>, con precio calculado por kilómetro</p>
+          <div class="plats-row"><span>COMPARA</span>
+            <img src="img/uber.png" alt="Uber">
+            <img src="img/didi.png" alt="DiDi">
+            <img src="img/indrive.png" alt="inDrive">
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="tabs" id="authTabs">
+            <button type="button" class="tab active" data-tab="login" onclick="AUTH_UI.tab('login')">Ingresar</button>
+            <button type="button" class="tab" data-tab="registro" onclick="AUTH_UI.tab('registro')">Crear cuenta</button>
+            <button type="button" class="tab" data-tab="recuperar" onclick="AUTH_UI.tab('recuperar')">Recuperar</button>
+          </div>
+
+          <!-- LOGIN -->
+          <div id="tabLogin">
+            <div class="field"><label>CORREO ELECTRÓNICO</label>
+              <input id="aEmail" type="email" inputmode="email" placeholder="tucorreo@ejemplo.com" autocomplete="email"></div>
+            <div class="field"><label>CONTRASEÑA</label>
+              <input id="aPass" type="password" placeholder="Tu contraseña" autocomplete="current-password"></div>
+            <label class="check-line"><input type="checkbox" id="aRecordar" checked> Recordar sesión en este dispositivo</label>
+            <button id="authBtn" class="btn btn-primary btn-block" onclick="AUTH_UI.ingresar()">Ingresar</button>
+            <div id="authNotice" class="notice hidden"></div>
+          </div>
+
+          <!-- REGISTRO -->
+          <div id="tabRegistro" class="hidden">
+            <div class="field"><label>NOMBRE</label>
+              <input id="rNombre" placeholder="Ej. Juan Díaz" autocomplete="name"></div>
+            <div class="field"><label>CORREO ELECTRÓNICO</label>
+              <input id="rEmail" type="email" inputmode="email" placeholder="tucorreo@ejemplo.com" autocomplete="email"></div>
+            <div class="field"><label>CONTRASEÑA (mínimo 6 caracteres)</label>
+              <input id="rPass" type="password" placeholder="Crea una contraseña" autocomplete="new-password"></div>
+            <div class="field"><label>REPETIR CONTRASEÑA</label>
+              <input id="rPass2" type="password" placeholder="Repite la contraseña" autocomplete="new-password"></div>
+            <button id="regBtn" class="btn btn-primary btn-block" onclick="AUTH_UI.registrar()">Crear mi cuenta</button>
+            <div id="regNotice" class="notice hidden"></div>
+            <p class="auth-switch">¿Ya tienes cuenta? <a href="#" onclick="AUTH_UI.tab('login');return false;">Iniciar sesión</a></p>
+          </div>
+
+          <!-- RECUPERAR -->
+          <div id="tabRecuperar" class="hidden">
+            <div class="field"><label>CORREO REGISTRADO</label>
+              <input id="recEmail" type="email" inputmode="email" placeholder="tucorreo@ejemplo.com"></div>
+            <button id="recBtn" class="btn btn-ghost btn-block" onclick="AUTH_UI.solicitarCodigo()">Generar código de recuperación</button>
+            <p class="auth-switch">¿Ya la recuperaste? <a href="#" onclick="AUTH_UI.tab('login');return false;">Iniciar sesión</a></p>
+            <div id="recNotice" class="notice hidden"></div>
+            <div id="recPaso2" class="hidden" style="margin-top:10px;">
+              <div class="field"><label>CÓDIGO RECIBIDO</label><input id="recCode" inputmode="numeric" placeholder="6 dígitos"></div>
+              <div class="field"><label>NUEVA CONTRASEÑA</label><input id="recPass" type="password" placeholder="Nueva contraseña"></div>
+              <div class="field"><label>REPETIR NUEVA CONTRASEÑA</label><input id="recPass2" type="password" placeholder="Repite la contraseña"></div>
+              <button class="btn btn-primary btn-block" onclick="AUTH_UI.cambiarConCodigo()">Cambiar contraseña</button>
+            </div>
+          </div>
+
+          <div class="divider"><span>o continúa con</span></div>
+          <button class="btn btn-google btn-block" id="authGoogleBtn" onclick="AUTH_UI.google()">
+            <span class="g-icon">G</span> Continuar con Google
+          </button>
+          <div id="googleNotice" class="notice hidden"></div>
+          <p class="auth-foot">Al continuar aceptas los términos de uso y el tratamiento de tus datos en este dispositivo.</p>
+        </div>
+
+        <button class="btn btn-ghost btn-block" style="margin-top:8px;" onclick="AUTH_UI.entrarInvitado()">Continuar como invitado</button>
+      </div>
+    </section>
+
+    <!-- ============ 1. PANTALLA PRINCIPAL ============ -->
+    <section id="screen1" class="screen">
+      <div class="hero hero-v2">
+        <div class="hero-row">
+          <div>
+            <p class="hello" id="greeting">Hola 👋</p>
+            <h1>¿A dónde vamos?</h1>
+          </div>
+                    <div class="hero-right">
+            <span class="hero-badge hidden" id="heroZona">Cartagena</span>
+            <div class="user-badge" id="userBadge" onclick="UI.abrirCuenta()">👤 Invitado</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <button class="origin-line origin-btn" id="origenBtn" onclick="ORIGEN_UI.abrir()">
+          <span class="origin-dot"></span>
+          <div class="origin-body">
+            <small>ORIGEN</small>
+            <b id="origenLabel">Elige desde dónde sales</b>
+            <em id="origenSub">Busca un lugar, tu ubicación o una dirección</em>
+          </div>
+          <span class="destino-chev">›</span>
+        </button>
+
+        <button class="destino-btn" id="destinoBtn" onclick="PICKER.abrir()">
+          <span class="destino-ico">📍</span>
+          <span class="destino-txt">
+            <small>DESTINO</small>
+            <b id="destinoLabel">Elige tu destino</b>
+            <em id="destinoSub">747 lugares · barrios, hoteles, clínicas, centros comerciales…</em>
+          </span>
+          <span class="destino-chev">›</span>
+        </button>
+
+        <div class="veh-selector">
+          <button id="btnMoto" class="active" onclick="FLOW.seleccionarVehiculo('moto')">🏍️ Moto</button>
+          <button id="btnCarro" onclick="FLOW.seleccionarVehiculo('carro')">🚗 Carro</button>
+        </div>
+
+        <div class="resumen-viaje" id="resumenViaje">
+          <div><small>ORIGEN</small><b id="resOrigen">—</b></div>
+          <div><small>DESTINO</small><b id="resDestino">—</b></div>
+        </div>
+
+        <div id="zoneChip" class="zone-chip hidden"></div>
+
+        <div class="price-inline" id="priceInline">
+          <div><small>PRECIO APROXIMADO</small><b id="precioEstimado">$ 0</b></div>
+        </div>
+
+        <div class="frecuentes">
+          <small>DESTINOS FRECUENTES</small>
+          <div class="quick" id="frecuentes"></div>
+        </div>
+
+        <button id="btnBuscar" class="btn btn-primary btn-block" onclick="FLOW.buscarViajes()">🔍 Buscar conductor</button>
+        <div id="searchNotice" class="notice hidden"></div>
+      </div>
+      <div class="card mapa-card" style="margin-top:10px;">
+        <div id="mapaInicio" class="mapa"></div>
+        <div class="ruta-bar" id="rutaBarInicio"><span>Elige un destino para ver la ruta por carretera</span><span class="badge-osrm">OSRM · OSM</span></div>
+      </div>
+      <div class="footer">UniX Driver · Cartagena</div>
+    </section>
+
+    <!-- ============ 2. OFERTAS ============ -->
+    <section id="screen2" class="screen">
+      <div class="card">
+        <div class="flex-between">
+          <h2>Buscando conductores</h2>
+          <button class="btn btn-ghost btn-sm" onclick="FLOW.abrirCancelacion()">✕ Cancelar</button>
+        </div>
+        <p class="sub" id="ofertasSub">Comparando tarifas disponibles…</p>
+
+        <div id="radarPanel" class="radar-panel">
+          <div class="radar">
+            <span class="onda o1"></span><span class="onda o2"></span><span class="onda o3"></span>
+            <div class="sweep"></div>
+            <span class="blip b1"></span><span class="blip b2 amber"></span><span class="blip b3"></span>
+            <div class="radar-core">U</div>
+          </div>
+          <p class="radar-text" id="radarText">Buscando conductores cerca del origen…</p>
+          <div class="radar-pls"><span><i class="spin"></i> Uber</span><span><i class="spin"></i> DiDi</span><span><i class="spin"></i> inDrive</span></div>
+        </div>
+
+        <div id="offers" class="result-list hidden"></div>
+        <div id="offersNotice" class="notice hidden"></div>
+        <div class="sim-badge hidden" id="offersSimBadge" class="hidden">Tarifas de referencia</div>
+      </div>
+      <div class="footer">UniX Driver · Selecciona una oferta</div>
+    </section>
+
+    <!-- ============ 3. CONDUCTOR ASIGNADO ============ -->
+    <section id="screen3" class="screen">
+      <div class="card">
+        <div class="assigned-head">
+          <div class="avatar" id="aAvatar">👨‍✈️</div>
+          <div>
+            <span class="pill-ok">✓ Conductor asignado</span>
+            <h2 style="margin-top:4px;">¡Tu conductor ha sido asignado!</h2>
+          </div>
+        </div>
+
+        <div class="conductor-info" style="margin-top:10px;">
+          <div class="row"><span class="label">Conductor</span><span class="value" id="aNombre">-</span></div>
+          <div class="row"><span class="label">Calificación</span><span class="value" id="aRating">-</span></div>
+          <div class="row"><span class="label">Vehículo</span><span class="value" id="aVehiculo">-</span></div>
+          <div class="row"><span class="label">Placa</span><span class="value" id="aPlaca">-</span></div>
+          <div class="row"><span class="label">Plataforma</span><span class="value" id="aPlataforma">-</span></div>
+          <div class="row"><span class="label">Destino</span><span class="value" id="aDestino">-</span></div>
+          <div class="row"><span class="label">Llega en</span><span class="value" id="aEta">-</span></div>
+          <div class="row"><span class="label">Precio acordado</span><span class="value" id="aPrecio">-</span></div>
+        </div>
+
+        <button class="btn btn-primary btn-block" style="margin-top:12px;" onclick="FLOW.conductorEnCamino()">Seleccionar conductor e iniciar viaje</button>
+        <button class="btn btn-danger btn-block btn-sm" style="margin-top:8px;" onclick="FLOW.abrirCancelacion()">Cancelar viaje</button>
+        <div id="assignedNotice" class="notice hidden"></div>
+      </div>
+      <div class="footer">UniX Driver · Conductor asignado</div>
+    </section>
+
+    <!-- ============ 4. CONDUCTOR EN CAMINO ============ -->
+    <section id="screen4" class="screen">
+      <div class="card">
+        <div class="flex-between">
+          <h2>Tu conductor va en camino</h2>
+          <span class="pill-warn" id="cEstadoPill">En camino</span>
+        </div>
+
+        <div class="countdown-wrap">
+          <div class="countdown" id="cCountdown">--:--</div>
+          <p class="sub" id="cEstado">Llegará al punto de origen</p>
+          <div class="progress"><div class="progress-fill" id="cProgress"></div></div>
+        </div>
+
+        <div class="driver-mini">
+          <div class="avatar sm">👨‍✈️</div>
+          <div>
+            <b id="cNombre">-</b>
+            <span id="cVehiculo">-</span>
+            <span class="placa" id="cPlaca">-</span>
+          </div>
+        </div>
+
+        <div class="notice" style="margin-top:10px;">⏱️ Tiempo estimado de llegada en minutos.</div>
+        <button class="btn btn-danger btn-block" style="margin-top:10px;" onclick="FLOW.abrirCancelacion()">Cancelar viaje</button>
+      </div>
+      <div class="footer">UniX Driver · Seguimiento de llegada</div>
+    </section>
+
+    <!-- ============ 5. CONDUCTOR LLEGÓ ============ -->
+    <section id="screen5" class="screen">
+      <div class="card center">
+        <div class="arrive-ico">📍</div>
+        <h2 style="font-size:20px;">¡Tu conductor ha llegado!</h2>
+        <p class="sub" id="lugarTexto">Está esperando en el punto de origen</p>
+
+        <div class="conductor-info" style="margin-top:12px;text-align:left;">
+          <div class="row"><span class="label">Conductor</span><span class="value" id="lNombre">-</span></div>
+          <div class="row"><span class="label">Vehículo</span><span class="value" id="lVehiculo">-</span></div>
+          <div class="row"><span class="label">Placa</span><span class="value" id="lPlaca">-</span></div>
+          <div class="row"><span class="label">Destino</span><span class="value" id="lDestino">-</span></div>
+          <div class="row"><span class="label">Precio</span><span class="value" id="lPrecio">-</span></div>
+        </div>
+
+        <button class="btn btn-primary btn-block" style="margin-top:14px;" onclick="FLOW.iniciarViaje()">▶ Iniciar viaje</button>
+        <button class="btn btn-danger btn-block" style="margin-top:8px;" onclick="FLOW.abrirCancelacion()">Cancelar viaje</button>
+        <div id="arrivedNotice" class="notice hidden"></div>
+      </div>
+      <div class="footer">UniX Driver · El viaje no inicia sin tu confirmación</div>
+    </section>
+
+    <!-- ============ 6. VIAJE EN CURSO ============ -->
+    <section id="screen6" class="screen">
+      <div class="card">
+        <div class="flex-between">
+          <h2>Viaje en curso</h2>
+          <span class="pill-ok">En curso</span>
+        </div>
+        <p class="sub" id="tDestino">-</p>
+
+        <div class="road" id="road">
+          <div class="speedlines" id="speedlines"></div>
+          <div class="dashline"></div>
+          <span class="decor d1">🌴</span><span class="decor d2">🏠</span><span class="decor d3">🌴</span>
+          <div class="pin a">A</div><div class="pin b">B</div>
+          <div class="vehicle"><span id="vehicleEmoji" class="vehicle-inner">🏍️</span></div>
+        </div>
+        <div class="progress"><div class="progress-fill" id="tProgreso"></div></div>
+        <p class="trip-status" id="tEstado">Recorrido en progreso…</p>
+
+        <div class="mapa-card" style="margin-top:10px;">
+          <div id="mapaViaje" class="mapa"></div>
+          <div class="ruta-bar" id="rutaBarViaje"><span>Ruta por carretera</span><span class="badge-osrm">OSRM · OSM</span></div>
+        </div>
+
+        <div class="conductor-info" style="margin-top:10px;">
+          <div class="row"><span class="label">Conductor</span><span class="value" id="tConductor">-</span></div>
+          <div class="row"><span class="label">Vehículo</span><span class="value" id="tVehiculo">-</span></div>
+          <div class="row"><span class="label">Tiempo estimado</span><span class="value" id="tEta">-</span></div>
+        </div>
+        <div class="notice" style="margin-top:10px;">🔒 El viaje en curso no se puede cancelar desde aquí. Al terminar verás el resumen y el pago.</div>
+      </div>
+      <div class="footer">UniX Driver · Seguimiento del recorrido</div>
+    </section>
+
+    <!-- ============ 7. PAGO ============ -->
+    <section id="screen7" class="screen">
+      <div class="card">
+        <div class="flex-between">
+          <h2>Cobro y comisión</h2>
+          <span class="pill-ok">Finalizado</span>
+        </div>
+        <div class="fare-hero">
+          <small>TARIFA DEL VIAJE</small>
+          <b id="fareBig">$0</b>
+          <span id="fareRoute">-</span>
+        </div>
+        <div class="pay-rows">
+          <div class="pay-row"><span>💳 Tarifa que paga el pasajero</span><b id="fare">$0</b></div>
+          <div class="pay-row"><span>🏛️ Comisión UniX Driver (10%)</span><b id="commission" class="neg">-$0</b></div>
+          <div class="pay-row total"><span>🧾 Ingreso neto del conductor</span><b id="net">$0</b></div>
+        </div>
+        <div class="field"><label>MÉTODO DE PAGO</label>
+          <select id="metodoPago">
+            <option value="tarjeta">Tarjeta</option>
+            <option value="efectivo">Efectivo</option>
+            <option value="nequi">Nequi</option>
+            <option value="daviplata">Daviplata</option>
+            <option value="pse">PSE</option>
+          </select>
+        </div>
+        <button id="payBtn" class="btn btn-primary btn-block" onclick="FLOW.pagar()">💳 Pagar</button>
+        <div id="paymentNotice" class="notice hidden"></div>
+      </div>
+      <div class="footer">UniX Driver · Cobro y comprobante</div>
+    </section>
+
+    <!-- ============ 8. COMPROBANTE ============ -->
+    <section id="screen8" class="screen">
+      <div class="card center">
+        <div class="success-icon">✓</div>
+        <h2 style="font-size:20px;margin-bottom:4px;">¡Viaje completado!</h2>
+        <p id="successText" class="sub"></p>
+        <div class="receipt" id="receiptBox"></div>
+        <div class="actions" style="justify-content:center;margin-top:14px;">
+          <button class="btn btn-primary" onclick="FLOW.nuevoViaje()">🔄 Nuevo viaje</button>
+          <button class="btn btn-ghost" onclick="UI.goToScreen(10)">📊 Historial</button>
+        </div>
+      </div>
+      <div class="footer">UniX Driver · Gracias por viajar</div>
+    </section>
+
+    
+    <!-- ============ 11. MI VIAJE (seguimiento) ============ -->
+    <section id="screen11" class="screen">
+      <div id="viajeBody"></div>
+    </section>
+
+    <!-- ============ 10. HISTORIAL ============ -->
+    <section id="screen10" class="screen">
+      <div class="card">
+        <div class="flex-between">
+          <h2>📊 Historial de viajes</h2>
+          <button class="btn btn-ghost btn-sm" onclick="UI.goToScreen(1)">← Volver</button>
+        </div>
+        <div id="histKpis" class="zone-summary"></div>
+        <div class="field" style="margin-top:10px;">
+          <select id="histFiltroEstado" onchange="UI.renderHistorial()">
+            <option value="todos">Todos los estados</option>
+            <option value="pagado">Completados y pagados</option>
+            <option value="finalizado">Finalizados sin pagar</option>
+            <option value="cancelado">Cancelados</option>
+          </select>
+        </div>
+        <div id="histList" class="hist-list"></div>
+        <button class="btn btn-ghost btn-block btn-sm" style="margin-top:10px;" onclick="UI.limpiarHistorial()">🗑️ Borrar historial</button>
+      </div>
+      <div class="footer">UniX Driver · Los viajes quedan guardados en el dispositivo</div>
+    </section>
+
+  </div><!-- /screens -->
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-screen="1" onclick="UI.goToScreen(1)"><span>🏠</span>Inicio</button>
+    <button class="nav-btn" data-screen="11" onclick="UI.goToScreen(11)"><span>🧭</span>Viaje</button>
+    <button class="nav-btn" data-screen="10" onclick="UI.goToScreen(10)"><span>📊</span>Historial</button>
+    <button class="nav-btn" data-cuenta="1" onclick="UI.abrirCuenta()"><span>👤</span>Cuenta</button>
+  </nav>
+</div>
+
+<!-- ============ OVERLAY: SELECTOR DE DESTINOS ============ -->
+<div id="pickerOverlay" class="overlay hidden">
+  <div class="sheet full">
+    <div class="sheet-head">
+      <button class="btn btn-ghost btn-sm" onclick="PICKER.cerrar()">←</button>
+      <b>Elige tu destino</b>
+      <span class="pill-soft" id="pickerCount">0</span>
+    </div>
+    <div class="sheet-body">
+      <input id="pickerInput" class="picker-input" placeholder="Busca por lugar, barrio o categoría…" oninput="PICKER.filtrar()" autocomplete="off">
+      <div class="chips" id="pickerCats"></div>
+      <div id="pickerList" class="picker-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ OVERLAY: SELECTOR DE ORIGEN ============ -->
+<div id="origenOverlay" class="overlay hidden">
+  <div class="sheet full">
+    <div class="sheet-head">
+      <button class="btn btn-ghost btn-sm" onclick="ORIGEN_UI.cerrar()">←</button>
+      <b>Elige tu origen</b>
+      <span class="pill-soft">Origen</span>
+    </div>
+    <div class="sheet-body">
+      <button class="btn btn-primary btn-block" id="origenGpsBtn" onclick="ORIGEN_UI.usarGPS()">📍 Usar mi ubicación actual</button>
+      <div class="origen-frec" id="origenFrecuentes"></div>
+      <input id="origenInput" class="picker-input" placeholder="Lugar, barrio, sector o dirección…"
+             oninput="ORIGEN_UI.pintarSugerencias(this.value)" onkeydown="if(event.key==='Enter'){ORIGEN_UI.buscarDireccion()}" autocomplete="off">
+      <button class="btn btn-ghost btn-block btn-sm" style="margin-top:6px;" onclick="ORIGEN_UI.buscarDireccion()">🔎 Buscar dirección</button>
+      <div class="notice hidden" id="origenNotice"><span id="origenNoticeTxt"></span></div>
+      <div id="origenList" class="origin-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ OVERLAY: CANCELACIÓN ============ -->
+<div id="cancelOverlay" class="overlay hidden">
+  <div class="sheet">
+    <div class="sheet-head">
+      <button class="btn btn-ghost btn-sm" onclick="FLOW.cerrarCancelacion()">←</button>
+      <b>¿Por qué deseas cancelar?</b>
+      <span></span>
+    </div>
+    <div class="sheet-body">
+      <div id="cancelMotivos" class="motivos"></div>
+      <div id="cancelOtroWrap" class="field hidden">
+        <label>CUÉNTANOS MÁS (OPCIONAL)</label>
+        <textarea id="cancelOtro" rows="2" maxlength="180" placeholder="Escribe el motivo…"></textarea>
+      </div>
+      <div id="cancelConfirm" class="hidden">
+        <div class="notice error">¿Estás seguro de que deseas cancelar este viaje? Esta acción finalizará la solicitud actual.</div>
+        <button class="btn btn-danger btn-block" style="margin-top:10px;" onclick="FLOW.confirmarCancelacion()">Sí, cancelar viaje</button>
+        <button class="btn btn-ghost btn-block" style="margin-top:8px;" onclick="FLOW.volverAlViaje()">No, continuar con el viaje</button>
+      </div>
+      <button id="btnConfirmarCancel" class="btn btn-primary btn-block" style="margin-top:12px;" onclick="FLOW.pedirConfirmacionCancelacion()">Confirmar cancelación</button>
+      <div id="cancelNotice" class="notice hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ OVERLAY: CUENTA ============ -->
+<div id="cuentaOverlay" class="overlay hidden">
+  <div class="sheet">
+    <button class="cfg-link" onclick="CONFIG_UI.abrir()">⚙️ Tarifas</button>
+    <div class="sheet-head">
+      <button class="btn btn-ghost btn-sm" onclick="UI.cerrarCuenta()">←</button>
+      <b>Mi cuenta</b>
+      <span></span>
+    </div>
+    <div class="sheet-body">
+      <div class="conductor-info">
+        <div class="row"><span class="label">Nombre</span><span class="value" id="cuentaNombre">-</span></div>
+        <div class="row"><span class="label">Correo</span><span class="value" id="cuentaEmail">-</span></div>
+        <div class="row"><span class="label">Sesión</span><span class="value" id="cuentaSesion">-</span></div>
+        <div class="row"><span class="label">Viajes guardados</span><span class="value" id="cuentaViajes">0</span></div>
+      </div>
+      <div class="notice" style="margin-top:10px;" id="authTechNotice">🔐 Autenticación local del dispositivo (correo y contraseña con hash). No se envía nada a internet.</div>
+      <button class="btn btn-ghost btn-block" style="margin-top:10px;" onclick="AUTH_UI.eliminarCuenta()">Eliminar mi cuenta local</button>
+      <button class="btn btn-danger btn-block" style="margin-top:8px;" onclick="AUTH_UI.salir()">Cerrar sesión</button>
+    </div>
+  </div>
+</div>
+
+<script src="config/tarifas.js"></script>
+<script src="js/config-tarifas.js"></script>
+  <script src="js/storage.js"></script>
+<script src="config/firebase-config.js"></script>
+<script src="js/auth.js"></script>
+<script src="vendor/leaflet/leaflet.js"></script>
+<script src="js/mapa.js"></script>
+<script src="data/destinos.js"></script>
+<script src="js/state.js"></script>
+<script src="js/destinos.js"></script>
+<script src="js/origen.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/flows.js"></script>
+<script src="js/viaje.js"></script>
+  <script src="js/boot.js"></script>
+
+  <div class="overlay hidden" id="cfgOverlay">
+    <div class="sheet">
+      <div class="sheet-head">
+        <h3>Tarifas por kilómetro</h3>
+        <button class="x" onclick="CONFIG_UI.cerrar()">✕</button>
+      </div>
+      <div class="cfg-row"><span>🏍️ Primer kilómetro · moto</span><input id="cfgBaseMoto" class="cfg-inp" type="number" inputmode="numeric" min="0" placeholder="por definir"></div>
+      <div class="cfg-row"><span>🏍️ Precio por km moto</span><input id="cfgKmMoto" class="cfg-inp" type="number" inputmode="numeric" min="0" placeholder="por definir"></div>
+      <div class="cfg-row"><span>🏍️ Tarifa mínima moto</span><input id="cfgMinMoto" class="cfg-inp" type="number" inputmode="numeric" min="0" placeholder="por definir"></div>
+      <div class="cfg-row"><span>🚗 Primer kilómetro · automóvil</span><input id="cfgBaseCarro" class="cfg-inp" type="number" inputmode="numeric" min="0" placeholder="por definir"></div>
+      <div class="cfg-row"><span>🚗 Precio por km automóvil</span><input id="cfgKmCarro" class="cfg-inp" type="number" inputmode="numeric" min="0" placeholder="por definir"></div>
+      <div class="cfg-row"><span>🚗 Tarifa mínima automóvil</span><input id="cfgMinCarro" class="cfg-inp" type="number" inputmode="numeric" min="0" placeholder="por definir"></div>
+      <div class="cfg-row"><span>Redondeo (COP)</span><input id="cfgRedondeo" class="cfg-inp" type="number" inputmode="numeric" min="0" placeholder="500"></div>
+      <div class="cfg-row"><span>Recargo sobre 15 km (%)</span><input id="cfgRecPct" class="cfg-inp" type="number" inputmode="numeric" min="0" placeholder="0"></div>
+      <div class="notice" id="cfgNotice"></div>
+      <button class="btn" onclick="CONFIG_UI.guardar()">Guardar tarifas</button>
+      <button class="btn ghost" style="margin-top:8px;" onclick="CONFIG_UI.restablecer()">Borrar configuración</button>
+    </div>
+  </div>
+</body>
+</html>
