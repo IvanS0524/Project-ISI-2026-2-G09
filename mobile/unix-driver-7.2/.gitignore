@@ -10,5 +10,7 @@ android/keystore.properties
 *.apk
 *.aab
 .env
+www/config/api-env.js
+UniX-Driver.html
 .geocache.json
 .DS_Store

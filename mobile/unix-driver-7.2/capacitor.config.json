@@ -2,6 +2,13 @@
   "appId": "com.unixdriver.cartagena",
   "appName": "UniX Driver",
   "webDir": "www",
-  "server": { "androidScheme": "https" },
-  "android": { "allowMixedContent": false, "captureInput": true, "webContentsDebuggingEnabled": false }
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true
+  }
 }
