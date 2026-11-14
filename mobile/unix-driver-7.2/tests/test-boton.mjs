@@ -1,6 +1,7 @@
 import { JSDOM, VirtualConsole } from 'jsdom';
 import fs from 'fs';
-const www = '/home/user/v5/www';
+import { fileURLToPath } from 'url';
+const www = fileURLToPath(new URL('../www', import.meta.url)).replace(/\/+$/, '');
 const vc = new VirtualConsole(); const errs = [];
 vc.on('jsdomError', e => { const m = String(e.message || e);
   if (!/getContext|not implemented|Could not parse CSS|canvas|Could not load|Viewport/i.test(m)) errs.push(m); });
@@ -10,9 +11,31 @@ const w = dom.window, d = w.document;
 const L = () => { const o = { setView(){return o}, fitBounds(){return o}, addLayer(){return o}, removeLayer(){return o}, remove(){}, on(){return o}, invalidateSize(){return o} }; return o; };
 w.L = { map: L, tileLayer: () => ({ addTo(){return this}, on(){return this} }), marker: () => ({ addTo(){return this}, bindPopup(){return this}, setLatLng(){return this} }),
   polyline: () => ({ addTo(){return this} }), latLngBounds: () => ({}), divIcon: () => ({}), icon: () => ({}) };
-w.fetch = async () => ({ ok: false, status: 503, json: async () => ({}) });
-for (const f of ['config/firebase-config.js','config/tarifas.js','js/config-tarifas.js','js/storage.js','js/auth.js','js/mapa.js',
+const dbUsuarios = new Map();
+let seqUsuario = 1;
+w.fetch = async (url, opts = {}) => {
+  const u = String(url);
+  if (u.endsWith('/usuarios/registro')) {
+    const body = JSON.parse(opts.body || '{}');
+    const correo = String(body.correo || '').toLowerCase();
+    if (dbUsuarios.has(correo)) return { ok: false, status: 400, json: async () => ({ detail: 'Ya existe una cuenta con ese correo.' }) };
+    const nuevo = { id_usuario: seqUsuario++, nombre: body.nombre, correo, contrasena: body.contrasena };
+    dbUsuarios.set(correo, nuevo);
+    return { ok: true, status: 201, json: async () => ({ id_usuario: nuevo.id_usuario, nombre: nuevo.nombre, correo: nuevo.correo }) };
+  }
+  if (u.endsWith('/usuarios/login')) {
+    const body = JSON.parse(opts.body || '{}');
+    const correo = String(body.correo || '').toLowerCase();
+    const usr = dbUsuarios.get(correo);
+    if (!usr) return { ok: false, status: 404, json: async () => ({ detail: 'No hay ninguna cuenta con ese correo.' }) };
+    if (body.contrasena !== usr.contrasena) return { ok: false, status: 401, json: async () => ({ detail: 'Contraseña incorrecta.' }) };
+    return { ok: true, status: 200, json: async () => ({ id_usuario: usr.id_usuario, nombre: usr.nombre, correo: usr.correo }) };
+  }
+  return { ok: true, status: 200, json: async () => ({}) };
+};
+for (const f of ['config/api-env.js','config/firebase-config.js','config/tarifas.js','js/config-tarifas.js','js/storage.js','js/apiService.js','js/auth.js','js/mapa.js',
   'data/destinos.js','js/state.js','js/destinos.js','js/origen.js','js/ui.js','js/flows.js','js/viaje.js','js/boot.js']) {
+  if (!fs.existsSync(www + '/' + f)) continue;
   const c = d.createElement('script'); c.textContent = fs.readFileSync(www + '/' + f, 'utf8'); d.body.appendChild(c);
 }
 d.dispatchEvent(new w.Event('DOMContentLoaded', { bubbles: true }));

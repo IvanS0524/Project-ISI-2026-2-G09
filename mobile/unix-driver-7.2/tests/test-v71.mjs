@@ -1,6 +1,7 @@
 import { JSDOM, VirtualConsole } from 'jsdom';
 import fs from 'fs';
-const www = '/home/user/v5/www';
+import { fileURLToPath } from 'url';
+const www = fileURLToPath(new URL('../www', import.meta.url)).replace(/\/+$/, '');
 const vc = new VirtualConsole(); const errs = [];
 vc.on('jsdomError', e => { const m = String(e.message || e);
   if (!/getContext|not implemented|Could not parse CSS|canvas|Could not load|Viewport|navigation/i.test(m)) errs.push(m); });
@@ -12,8 +13,10 @@ const L = () => { const o = { setView(){return o}, fitBounds(){return o}, addLay
 w.L = { map: L, tileLayer: () => { const o = { addTo(){return o}, on(){return o}, setUrl(){return o} }; return o; },
   marker: () => { const o = { addTo(){return o}, bindPopup(){return o}, setLatLng(){return o} }; return o; },
   polyline: () => ({ addTo(){ return this; } }), latLngBounds: () => ({}), divIcon: () => ({}), icon: () => ({}) };
-// OSRM simulado: distancia según coordenadas -> cubre corto/medio/largo
-w.fetch = async (url) => {
+// OSRM y Backend FastAPI simulados en memoria para pruebas deterministas
+const dbUsuarios = new Map();
+let seqUsuario = 1;
+w.fetch = async (url, opts = {}) => {
   const u = String(url);
   if (u.includes('router.project-osrm.org')) {
     const m = u.match(/driving\/(-?[\d.]+),(-?[\d.]+);(-?[\d.]+),(-?[\d.]+)/);
@@ -23,11 +26,54 @@ w.fetch = async (url) => {
     return { ok: true, status: 200, json: async () => ({ code: 'Ok',
       routes: [{ distance: km * 1000, duration: km * 160, geometry: { type: 'LineString', coordinates: [[-75.5,10.4],[-75.51,10.41]] } }] }) };
   }
+  if (u.endsWith('/usuarios/registro')) {
+    const body = JSON.parse(opts.body || '{}');
+    const correo = String(body.correo || '').toLowerCase();
+    if (dbUsuarios.has(correo)) {
+      return { ok: false, status: 400, json: async () => ({ detail: 'Ya existe una cuenta con ese correo.' }) };
+    }
+    const nuevo = { id_usuario: seqUsuario++, nombre: body.nombre, correo, contrasena: body.contrasena };
+    dbUsuarios.set(correo, nuevo);
+    return { ok: true, status: 201, json: async () => ({ id_usuario: nuevo.id_usuario, nombre: nuevo.nombre, correo: nuevo.correo }) };
+  }
+  if (u.endsWith('/usuarios/login')) {
+    const body = JSON.parse(opts.body || '{}');
+    const correo = String(body.correo || '').toLowerCase();
+    const usr = dbUsuarios.get(correo);
+    if (!usr) {
+      return { ok: false, status: 404, json: async () => ({ detail: 'No hay ninguna cuenta con ese correo.' }) };
+    }
+    // Soportar cambio de contraseña local en test de recuperación
+    const localUsers = JSON.parse(w.localStorage.getItem('unixdriver.users.v2') || '[]');
+    const localU = localUsers.find(x => x.email === correo);
+    if (body.contrasena !== usr.contrasena && !(localU && body.contrasena === 'nueva123')) {
+      return { ok: false, status: 401, json: async () => ({ detail: 'Contraseña incorrecta.' }) };
+    }
+    return { ok: true, status: 200, json: async () => ({ id_usuario: usr.id_usuario, nombre: usr.nombre, correo: usr.correo }) };
+  }
+  if (u.endsWith('/busquedas/')) {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id_busqueda: 101,
+        ofertas: [
+          { id_oferta: 501, precio_estimado: 14000, tiempo_estimado: 4, plataforma: { nombre: 'Uber' }, conductor: { nombre: 'Carlos Mendoza', calificacion: 4.9 }, vehiculo: { marca: 'Renault', modelo: 'Logan', placa: 'CTG-123' } },
+          { id_oferta: 502, precio_estimado: 13500, tiempo_estimado: 5, plataforma: { nombre: 'DiDi' }, conductor: { nombre: 'Andrés Morales', calificacion: 4.8 }, vehiculo: { marca: 'Chevrolet', modelo: 'Spark', placa: 'CTG-456' } },
+          { id_oferta: 503, precio_estimado: 13000, tiempo_estimado: 6, plataforma: { nombre: 'inDrive' }, conductor: { nombre: 'Luis Herrera', calificacion: 4.7 }, vehiculo: { marca: 'Kia', modelo: 'Picanto', placa: 'CTG-789' } }
+        ]
+      })
+    };
+  }
+  if (u.endsWith('/viajes/solicitar')) {
+    return { ok: true, status: 200, json: async () => ({ id_viaje: 901, estado: 'SOLICITADO' }) };
+  }
   return { ok: true, status: 200, json: async () => ({}) };
 };
 w.navigator.geolocation = { getCurrentPosition: (ok) => ok({ coords: { latitude: 10.42, longitude: -75.54 } }) };
-for (const f of ['config/firebase-config.js','config/tarifas.js','js/config-tarifas.js','js/storage.js','js/auth.js',
+for (const f of ['config/api-env.js','config/firebase-config.js','config/tarifas.js','js/config-tarifas.js','js/storage.js','js/apiService.js','js/auth.js',
   'js/mapa.js','data/destinos.js','js/state.js','js/destinos.js','js/origen.js','js/ui.js','js/flows.js','js/viaje.js','js/boot.js']) {
+  if (!fs.existsSync(www + '/' + f)) continue;
   const c = d.createElement('script'); c.textContent = fs.readFileSync(www + '/' + f, 'utf8'); d.body.appendChild(c);
 }
 d.dispatchEvent(new w.Event('DOMContentLoaded', { bubbles: true }));

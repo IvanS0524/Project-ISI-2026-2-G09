@@ -1,5 +1,9 @@
 'use strict';
 const fs = require('fs'), path = require('path');
+
+// Asegurar que www/config/api-env.js esté sincronizado con .env antes de empaquetar
+require('./sync-env.js');
+
 const raiz = path.join(__dirname, '..', 'www');
 let html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
 html = html.replace(/<link rel="stylesheet" href="([^"]+)">/g, (m, f) =>

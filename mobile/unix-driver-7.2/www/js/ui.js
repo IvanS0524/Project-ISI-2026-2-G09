@@ -69,8 +69,67 @@ const UI = (() => {
   }
 
 
-  /* ---------- Historial ---------- */
-  function renderHistorial() {
+  /* ---------- Historial (Sincronizado con GET /viajes/usuario/{id} en AWS RDS) ---------- */
+  let sincronizandoHistorial = false;
+
+  async function sincronizarHistorialDesdeAws() {
+    if (sincronizandoHistorial) return;
+    if (typeof window === 'undefined' || !window.apiService || typeof window.apiService.obtenerHistorialViajes !== 'function') return;
+    const s = (typeof AUTH !== 'undefined' && AUTH.sesion) ? AUTH.sesion() : null;
+    const idUsuario = (s && s.id_usuario) ? Number(s.id_usuario) : null;
+    if (!idUsuario) return;
+
+    sincronizandoHistorial = true;
+    try {
+      const viajesRemotos = await window.apiService.obtenerHistorialViajes(idUsuario);
+      if (!Array.isArray(viajesRemotos) || !viajesRemotos.length) return;
+
+      const local = leerHistorial();
+      let huboCambios = false;
+
+      viajesRemotos.forEach(vr => {
+        if (!vr || !vr.id_viaje) return;
+        const idViaje = 'V-' + vr.id_viaje;
+        if (local.some(x => String(x.id) === idViaje || String(x.id) === ('RDS-' + vr.id_viaje))) return;
+
+        const of = vr.oferta || {};
+        const plat = (of.plataforma && of.plataforma.nombre) || 'Uber';
+        const cond = (of.conductor && of.conductor.nombre) || 'Conductor asignado';
+        const vehTipo = (of.vehiculo && String(of.vehiculo.tipo || '').toLowerCase().includes('moto')) ? 'moto' : 'carro';
+        const tarifaNum = Number(vr.precio_final != null ? vr.precio_final : (of.precio_estimado || 0));
+        const estadoUpper = String(vr.estado || '').toUpperCase();
+        const estadoLocal = estadoUpper === 'CANCELADO'
+          ? 'cancelado'
+          : (estadoUpper === 'COMPLETADO' ? 'pagado' : 'finalizado');
+
+        local.push({
+          id: idViaje,
+          fecha: vr.fecha_hora_inicio ? new Date(vr.fecha_hora_inicio).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ahoraTexto(),
+          origen: 'Cartagena',
+          destino: 'Viaje #' + vr.id_viaje + ' (' + plat + ')',
+          vehiculo: vehTipo,
+          tarifa: tarifaNum,
+          comision: estadoLocal === 'cancelado' ? 0 : Math.round(tarifaNum * COMISION_PCT),
+          estado: estadoLocal,
+          conductor: cond,
+          plataforma: plat,
+          km: of.distancia != null ? Number(of.distancia) : null,
+          duracionMin: of.tiempo_estimado != null ? Number(of.tiempo_estimado) : null
+        });
+        huboCambios = true;
+      });
+
+      if (huboCambios) {
+        try { localStorage.setItem(LS_HIST, JSON.stringify(local.slice(0, 300))); } catch (_) {}
+        pintarHistorialDOM();
+      }
+    } catch (_) {
+    } finally {
+      sincronizandoHistorial = false;
+    }
+  }
+
+  function pintarHistorialDOM() {
     const lista = leerHistorial();
     const filtro = (document.getElementById('histFiltroEstado') || {}).value || 'todos';
     const vis = lista.filter(v => filtro === 'todos' ? true : v.estado === filtro);
@@ -102,6 +161,11 @@ const UI = (() => {
       </div>`).join('');
   }
 
+  function renderHistorial() {
+    pintarHistorialDOM();
+    sincronizarHistorialDesdeAws();
+  }
+
   function limpiarHistorial() {
     if (!leerHistorial().length) { setNotice('searchNotice', 'No hay viajes guardados para borrar.'); return; }
     if (!window.confirm('¿Borrar todo el historial guardado en este dispositivo?')) return;
@@ -117,9 +181,10 @@ const UI = (() => {
     document.getElementById('cuentaSesion').textContent = s ? 'Activa desde ' + String(s.desde || '').slice(0, 10) : 'Sin sesión';
     document.getElementById('cuentaViajes').textContent = leerHistorial().length;
     const nt = document.getElementById('authTechNotice');
-    if (nt) nt.innerHTML = '🔐 Autenticación y datos guardados en el dispositivo (' +
-      (typeof STORE !== 'undefined' ? STORE.motor() : 'localStorage') +
-      '). No se envía nada a internet.';
+    if (nt) {
+      nt.classList.add('hidden');
+      nt.innerHTML = '';
+    }
     mostrar('cuentaOverlay');
   }
   function cerrarCuenta() { ocultar('cuentaOverlay'); }

@@ -4,12 +4,13 @@
   "private": true,
   "description": "UniX Driver · Cartagena — aplicación Android (Capacitor 7 + HTML/CSS/JS)",
   "scripts": {
-    "sync": "cap sync android",
-    "build:web": "node tools/build-destinos.js && node tools/build-html.js",
+    "env:sync": "node tools/sync-env.js",
+    "sync": "node tools/sync-env.js && cap sync android",
+    "build:web": "node tools/sync-env.js && node tools/build-destinos.js && node tools/build-html.js",
     "build:apk": "npm run sync && cd android && ./gradlew assembleRelease",
     "build:apk:win": "npm run sync && cd android && gradlew.bat assembleRelease",
     "build:debug": "npm run sync && cd android && ./gradlew assembleDebug",
-    "test": "node tests/test-v71.mjs && node tests/test-boton.mjs",
+    "test": "node tools/sync-env.js && node tests/test-v71.mjs && node tests/test-boton.mjs",
     "open:android": "cap open android"
   },
   "dependencies": {

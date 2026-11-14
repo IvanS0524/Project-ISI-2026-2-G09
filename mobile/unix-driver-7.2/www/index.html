@@ -178,7 +178,7 @@
 
         <div id="offers" class="result-list hidden"></div>
         <div id="offersNotice" class="notice hidden"></div>
-        <div class="sim-badge hidden" id="offersSimBadge" class="hidden">Tarifas de referencia</div>
+        <div class="sim-badge hidden" id="offersSimBadge"></div>
       </div>
       <div class="footer">UniX Driver · Selecciona una oferta</div>
     </section>
@@ -459,17 +459,19 @@
         <div class="row"><span class="label">Sesión</span><span class="value" id="cuentaSesion">-</span></div>
         <div class="row"><span class="label">Viajes guardados</span><span class="value" id="cuentaViajes">0</span></div>
       </div>
-      <div class="notice" style="margin-top:10px;" id="authTechNotice">🔐 Autenticación local del dispositivo (correo y contraseña con hash). No se envía nada a internet.</div>
-      <button class="btn btn-ghost btn-block" style="margin-top:10px;" onclick="AUTH_UI.eliminarCuenta()">Eliminar mi cuenta local</button>
+      <div class="notice hidden" style="margin-top:10px;" id="authTechNotice"></div>
+      <button class="btn btn-ghost btn-block" style="margin-top:10px;" onclick="AUTH_UI.eliminarCuenta()">Eliminar mi cuenta</button>
       <button class="btn btn-danger btn-block" style="margin-top:8px;" onclick="AUTH_UI.salir()">Cerrar sesión</button>
     </div>
   </div>
 </div>
 
+<script src="config/api-env.js"></script>
 <script src="config/tarifas.js"></script>
 <script src="js/config-tarifas.js"></script>
-  <script src="js/storage.js"></script>
+<script src="js/storage.js"></script>
 <script src="config/firebase-config.js"></script>
+<script src="js/apiService.js"></script>
 <script src="js/auth.js"></script>
 <script src="vendor/leaflet/leaflet.js"></script>
 <script src="js/mapa.js"></script>

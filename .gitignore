@@ -10,8 +10,12 @@
 # -----------------------------------------------------------------------------
 .env
 .env.*
+**/.env
 backend/.env
 backend/.env.*
+mobile/unix-driver-7.2/.env
+mobile/unix-driver-7.2/www/config/api-env.js
+mobile/unix-driver-7.2/UniX-Driver.html
 *.pem
 *.key
 *credentials*.json
@@ -19,6 +23,7 @@ backend/.env.*
 
 # conservar siempre las plantillas de ejemplo sin secretos reales
 !.env.example
+!**/.env.example
 !backend/.env.example
 
 # -----------------------------------------------------------------------------

@@ -93,14 +93,21 @@ window.UNIX_CONFIG = {
     }
   },
 
+  /* ---------- Backend API REST (inyectado desde .env vía config/api-env.js) ---------- */
+  api: {
+    baseUrl: (typeof window !== 'undefined' && window.UNIX_API_URL) || 'http://localhost:8000',
+    fallbackUrls: [],
+    timeoutMs: 8000
+  },
+
   /* ---------- Integraciones de plataformas ----------
-     'no_integrado'  → las tarifas comparadas se calculan localmente
-                       con los factores de referencia; no hay reserva real.
-     'api'           → requiere credenciales de Uber / DiDi / inDrive.  */
+     'aws_rest'      → cotización y persistencia en el backend FastAPI (AWS EC2 + S3 + RDS)
+                       con respaldo local automático si no hay red.
+     'no_integrado'  → las tarifas comparadas se calculan localmente. */
   integraciones: {
-    plataformas: 'no_integrado',
-    pagos: 'no_integrado',
-    autenticacion: 'local'
+    plataformas: 'aws_rest',
+    pagos: 'aws_rest',
+    autenticacion: 'aws_rds'
   },
 
   /* ---------- Origen por defecto (solo sugerencia, no obligatorio) ---------- */

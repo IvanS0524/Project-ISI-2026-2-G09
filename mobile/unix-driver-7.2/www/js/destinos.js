@@ -53,7 +53,7 @@ const ICONO_CAT = {
 };
 const iconoCat = c => ICONO_CAT[c] || '📍';
 
-/** Carga la base local (script) o, si no está, el JSON por fetch. */
+/** Carga la base local (script) y sincroniza en segundo plano los 212 barrios oficiales desde AWS S3 (`GET /busquedas/barrios`). */
 async function cargarDestinos() {
   let doc = window.UNIX_DESTINOS || null;
   if (!doc) {
@@ -72,7 +72,57 @@ async function cargarDestinos() {
     .sort((a, b) => DEST.lista.filter(x => x.categoria === b).length - DEST.lista.filter(x => x.categoria === a).length);
   DEST.meta = doc.meta || {};
   DEST.cargado = true;
+
+  // Sincronización no bloqueante con el catálogo oficial de 212 barrios en AWS S3
+  sincronizarBarriosDesdeAws();
+
   return DEST.lista.length;
+}
+
+async function sincronizarBarriosDesdeAws() {
+  if (typeof window === 'undefined' || !window.apiService || typeof window.apiService.obtenerBarrios !== 'function') return;
+  try {
+    const barriosAws = await window.apiService.obtenerBarrios();
+    if (!Array.isArray(barriosAws) || !barriosAws.length) return;
+    let agregados = 0;
+    barriosAws.forEach((b, idx) => {
+      const nombreOficial = b.nombre_oficial || b.nombre;
+      const lat = Number(b.coordenada_y != null ? b.coordenada_y : b.lat);
+      const lon = Number(b.coordenada_x != null ? b.coordenada_x : b.lon);
+      if (!nombreOficial || !isFinite(lat) || !isFinite(lon)) return;
+
+      const claveNorm = norm(nombreOficial);
+      const existente = DEST.lista.find(d => (d.nombre_norm || norm(d.nombre)) === claveNorm);
+      if (existente) {
+        if (existente.lat == null || existente.lon == null) {
+          existente.lat = lat;
+          existente.lon = lon;
+        }
+      } else {
+        const idBarrio = 'aws-barrio-' + (b.codigo || (idx + 1));
+        const item = {
+          id: idBarrio,
+          nombre: nombreOficial,
+          nombre_norm: claveNorm,
+          barrio: nombreOficial,
+          barrio_norm: claveNorm,
+          categoria: 'Barrios y sectores',
+          cat_norm: norm('Barrios y sectores'),
+          zona: 'medio',
+          lat,
+          lon,
+          estado: 'verificado_aws_s3'
+        };
+        DEST.lista.push(item);
+        DEST.porId[idBarrio] = item;
+        agregados++;
+      }
+    });
+    if (agregados > 0) {
+      DEST.categorias = Array.from(new Set(DEST.lista.map(d => d.categoria)))
+        .sort((a, b) => DEST.lista.filter(x => x.categoria === b).length - DEST.lista.filter(x => x.categoria === a).length);
+    }
+  } catch (_) {}
 }
 
 function destinoPorId(id) { return DEST.porId[id] || null; }

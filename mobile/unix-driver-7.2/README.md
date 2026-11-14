@@ -1,268 +1,187 @@
-# UniX Driver · Cartagena — Proyecto completo (versión 7.2)
+# UniX Driver · Cartagena — Aplicación Móvil Conectada a AWS REST API (v7.2)
 
-Aplicación Android de transporte para Cartagena de Indias. Esta carpeta contiene **todo el
-código fuente** que genera el APK `versionCode 10` / `versionName "7.2"`.
-
----
-
-## 1. Qué tecnología usa
-
-**No es Kotlin, ni Java puro, ni Flutter, ni React Native, ni Ionic.**
-
-| Capa | Tecnología real |
-|---|---|
-| Interfaz y lógica de la app | **HTML5 + CSS3 + JavaScript (ES6)**, sin frameworks |
-| Empaquetado a Android | **Capacitor 7** (`@capacitor/android`, `@capacitor/core`, `@capacitor/app`) |
-| Capa nativa Android | **Java** (una sola clase: `MainActivity.java`, extiende `BridgeActivity`) |
-| Compilación | **Gradle 8.11.1** con el Gradle Wrapper incluido + Android Gradle Plugin 8.7.2 |
-| Mapa | **Leaflet** empaquetado localmente en `www/vendor/leaflet/` (sin CDN) |
-| Rutas por carretera | **OSRM** público (`router.project-osrm.org`) |
-| Geocodificación | **Nominatim** y **Photon** (OpenStreetMap, sin clave) |
-| Teselas del mapa | `tile.openstreetmap.org` |
-| Almacenamiento | `localStorage` + `@capacitor/preferences`-style `STORE` (`js/storage.js`) |
-| Autenticación | Local en el dispositivo; **Firebase Authentication opcional** por REST |
-
-La app es una **aplicación Android real**: se abre desde su icono, sin barra de direcciones,
-funciona sin conexión salvo mapa y rutas, y guarda los viajes en el dispositivo.
+Aplicación móvil híbrida para Android (**Capacitor 7 + HTML5/CSS3/ES6**) del proyecto **UniX Driver**, integrada con el backend **FastAPI desplegado en AWS EC2**, **Amazon RDS (PostgreSQL 16)** y **Amazon S3** para cotización unificada en tiempo real sobre **Uber**, **DiDi** e **inDrive**.
 
 ---
 
-## 2. Programas que debes instalar
+## 1. Arquitectura de Integración Mobile → AWS Cloud
 
-| Programa | Versión probada | Para qué |
-|---|---|---|
-| **Node.js** | 20 LTS o 22 LTS | `npm install` y `npx cap sync` |
-| **JDK** | **21** (probado: OpenJDK 21.0.12) | Gradle 8.11.1 exige JDK 17 o superior |
-| **Android SDK** | Platform 35, Build-Tools 35.0.0 | compilar el APK |
-| **Visual Studio Code** | última | editar el proyecto |
-| *(opcional)* Android Studio | última | emulador y depuración nativa |
+```mermaid
+flowchart LR
+    subgraph MobileApp["App Android (Capacitor 7 · WebView)"]
+        UI["Vistas & Controladores (ui.js, boot.js)"]
+        Auth["Módulo de Sesión (auth.js)"]
+        Flows["Flujo de Viaje (flows.js)"]
+        Dest["Buscador de Lugares (destinos.js)"]
+        ApiSvc["Cliente HTTP Central (apiService.js)"]
+        Cache["Respaldo Offline (localStorage / STORE)"]
+    end
 
-> El proyecto se compiló con: Node 22.23.4, JDK 21.0.12, Gradle 8.11.1, AGP 8.7.2,
-> compileSdk 35, minSdk 23, targetSdk 35.
+    subgraph AWS["Infraestructura AWS Cloud"]
+        EC2["Backend FastAPI (AWS EC2 :8000)"]
+        RDS[("Amazon RDS PostgreSQL 16")]
+        S3[("Amazon S3 · 212 Barrios")]
+    end
 
----
-
-## 3. Instalar Android SDK sin Android Studio
-
-1. Descarga *Command line tools* de <https://developer.android.com/studio#command-tools>.
-2. Descomprime en `C:\Android\sdk\cmdline-tools\latest` (Windows) o `~/Android/sdk/cmdline-tools/latest`.
-3. Instala los paquetes:
-
-```bash
-sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+    UI --> Auth & Flows & Dest
+    Auth & Flows & Dest --> ApiSvc
+    ApiSvc <-->|"HTTP JSON REST"| EC2
+    ApiSvc -.->|"Fallback resiliente"| Cache
+    EC2 --> RDS
+    EC2 --> S3
 ```
 
-4. Crea el archivo `android/local.properties` con la ruta de tu SDK:
+---
 
-```properties
-# Windows
-sdk.dir=C\:\\Android\\sdk
-# Linux / macOS
-sdk.dir=/home/tu-usuario/Android/sdk
-```
+## 2. Resumen de Cambios de Ingeniería Realizados
 
-> `local.properties` **no viene incluido** porque depende de tu equipo. Es el único archivo
-> que debes crear a mano, además de la llave de firma (opcional).
+### 2.1. Cliente HTTP Centralizado e Inyección Dinámica desde `.env` (`www/js/apiService.js` y `tools/sync-env.js`)
+Se refactorizó y estandarizó [`www/js/apiService.js`](file:///c:/Users/ivans/Desktop/Repositorios/ISI-2026-2-G09/mobile/unix-driver-7.2/www/js/apiService.js) bajo el patrón **IIFE / Singleton Global** (`window.apiService` y `window.UNIX_API_URL`), eliminando IPs quemadas en el código fuente versionado:
+- **Inyección desde `.env` (`tools/sync-env.js`)**: El script [`tools/sync-env.js`](file:///c:/Users/ivans/Desktop/Repositorios/ISI-2026-2-G09/mobile/unix-driver-7.2/tools/sync-env.js) lee `UNIX_API_BASE_URL` desde `mobile/unix-driver-7.2/.env` (o usa `'http://localhost:8000'` si no existe `.env`) y genera automáticamente `www/config/api-env.js` (excluido en `.gitignore`).
+- **Prioridad Absoluta de `window.UNIX_API_URL`**: Si `window.UNIX_API_URL` está definido, `apiService.js` lo prioriza sobre cualquier valor antiguo en `localStorage` (`unixdriver.api.url`) y sincroniza el almacenamiento local automáticamente.
+- **Control de Timeouts (`AbortController`)**: Cancela peticiones colgadas tras `7000 ms` sin bloquear el hilo de interfaz.
+- **Cobertura completa de casos de uso**:
+  - `verificarSalud()` → `GET /health`
+  - `login(correo, contrasena)` → `POST /usuarios/login` (**DSS02P**)
+  - `registrar(datosUsuario)` → `POST /usuarios/registro` (**DSS01P**)
+  - `obtenerPerfil(idUsuario)` / `actualizarPerfil(idUsuario, datos)` → `GET/PUT /usuarios/{id_usuario}` (**DSS03P**)
+  - `obtenerBarrios(query)` → `GET /busquedas/barrios` (catálogo oficial desde **Amazon S3**)
+  - `buscarOfertas(origen, destino, idUsuario)` → `POST /busquedas/` (**DSS04P** — **Uber**, **DiDi**, **inDrive**)
+  - `solicitarViaje(idOferta)` → `POST /viajes/solicitar` (**DSS05P**)
+  - `actualizarEstadoViaje(idViaje, estado, precioFinal)` → `PATCH /viajes/{id_viaje}/estado` (máquina de estados y liquidación automática de comisión al pasar a `COMPLETADO`)
+  - `obtenerHistorialViajes(idUsuario)` → `GET /viajes/usuario/{id_usuario}` (**DSS06P**)
+  - `obtenerComisionActiva()` → `GET /comisiones/configuracion/activa`
 
-Alternativa: define la variable de entorno `ANDROID_HOME` y no necesitas el archivo.
+### 2.2. Autenticación Conectada a Amazon RDS (`www/js/auth.js`)
+En [`www/js/auth.js`](file:///c:/Users/ivans/Desktop/Repositorios/ISI-2026-2-G09/mobile/unix-driver-7.2/www/js/auth.js):
+- `AUTH.registrar` e `AUTH.ingresar` consumen `POST /usuarios/registro` y `POST /usuarios/login` a través de `apiService`.
+- Se valida la estructura de respuesta de PostgreSQL (`typeof api.data.id_usuario === 'number'`) y se almacena el `id_usuario` real en la sesión activa (`unixdriver.sesion.v2`), permitiendo asociar búsquedas y viajes al pasajero autenticado en RDS.
+- Mantiene respaldo criptográfico local (`SHA-256` con WebCrypto) si el dispositivo pierde conectividad móvil.
+
+### 2.3. Sincronización del Catálogo de 212 Barrios desde Amazon S3 (`www/js/destinos.js`)
+En [`www/js/destinos.js`](file:///c:/Users/ivans/Desktop/Repositorios/ISI-2026-2-G09/mobile/unix-driver-7.2/www/js/destinos.js):
+- La función `cargarDestinos()` carga de inmediato la base local de sitios de interés y ejecuta en segundo plano `sincronizarBarriosDesdeAws()`, consumiendo `GET /busquedas/barrios`.
+- Enriquecimiento automático de coordenadas (`coordenada_y` → `lat`, `coordenada_x` → `lon`) e incorporación de cualquier barrio oficial proveniente del bucket S3 `unixdriver-data-cartagenabarrios-2026`.
+
+### 2.4. Flujo Completo del Viaje y Liquidación de Comisiones (`www/js/flows.js`)
+En [`www/js/flows.js`](file:///c:/Users/ivans/Desktop/Repositorios/ISI-2026-2-G09/mobile/unix-driver-7.2/www/js/flows.js):
+- **Cotización Unificada (`mostrarOfertas`)**: Consume `apiService.buscarOfertas(origen, destino, idUsuario)`, recibiendo las ofertas de **Uber**, **DiDi** e **inDrive** ordenadas por el algoritmo multicriterio del backend (65% precio / 35% tiempo de llegada) y aplicando el factor de motocicleta (`0.45x`) cuando corresponde.
+- **Solicitud de Viaje (`seleccionarOferta`)**: Registra el viaje en RDS mediante `apiService.solicitarViaje(id_oferta)` y guarda `trip.id_viaje`.
+- **Sincronización de Estados (`conductorEnCamino`, `iniciarViaje`, `finalizarViaje`, `confirmarCancelacion`)**: Envía `PATCH /viajes/{id_viaje}/estado` en cada transición (`ACEPTADO` → `EN_CURSO` → `COMPLETADO` / `CANCELADO`), disparando en RDS la generación automática de la comisión al completar el viaje.
+- **Porcentaje de Comisión Dinámico (`sincronizarComisionVigente`)**: Consulta `GET /comisiones/configuracion/activa` para aplicar la tasa vigente configurada por el administrador en base de datos.
+
+### 2.5. Historial Remoto y Estado de Cuenta (`www/js/ui.js`)
+En [`www/js/ui.js`](file:///c:/Users/ivans/Desktop/Repositorios/ISI-2026-2-G09/mobile/unix-driver-7.2/www/js/ui.js):
+- `renderHistorial()` ejecuta `sincronizarHistorialDesdeAws()`, consultando `GET /viajes/usuario/{id_usuario}` y fusionando los viajes registrados en PostgreSQL (`RDS-{id_viaje}`) con el historial del dispositivo.
+- El panel **Mi Cuenta** informa en tiempo real el endpoint AWS activo (`#authTechNotice`).
+
+### 2.6. Configuración de Entorno y Seguridad de Red en Android
+- **Configuración Central ([`www/config/tarifas.js`](file:///c:/Users/ivans/Desktop/Repositorios/ISI-2026-2-G09/mobile/unix-driver-7.2/www/config/tarifas.js))**: Se añadió el bloque `UNIX_CONFIG.api` con `baseUrl: (typeof window !== 'undefined' && window.UNIX_API_URL) || 'http://localhost:8000'`, `fallbackUrls: []` y `timeoutMs: 8000`.
+- **Variables de Entorno ([`.env`](file:///c:/Users/ivans/Desktop/Repositorios/ISI-2026-2-G09/mobile/unix-driver-7.2/.env) y [`.env.example`](file:///c:/Users/ivans/Desktop/Repositorios/ISI-2026-2-G09/mobile/unix-driver-7.2/.env.example))**: Definición de `UNIX_API_BASE_URL` en `.env` (ignorado por Git) y plantilla limpia en `.env.example`.
+- **Permisos de Tráfico HTTP en Android 9–15 ([`AndroidManifest.xml`](file:///c:/Users/ivans/Desktop/Repositorios/ISI-2026-2-G09/mobile/unix-driver-7.2/android/app/src/main/AndroidManifest.xml) y [`network_security_config.xml`](file:///c:/Users/ivans/Desktop/Repositorios/ISI-2026-2-G09/mobile/unix-driver-7.2/android/app/src/main/res/xml/network_security_config.xml))**:
+  - Se cambió `android:usesCleartextTraffic="false"` a `android:usesCleartextTraffic="true"` en `AndroidManifest.xml`.
+  - Se creó `android/app/src/main/res/xml/network_security_config.xml` con `cleartextTrafficPermitted="true"`, evitando que el WebView de Android bloquee las peticiones `http://` hacia el puerto `8000` de AWS EC2 (`ERR_CLEARTEXT_NOT_PERMITTED`).
 
 ---
 
-## 4. Abrir el proyecto en Visual Studio Code
+## 3. Mapeo de Endpoints Consumidos por la Vista Mobile
 
-```bash
-cd unix-driver
+| Caso de Uso | Método y Ruta en AWS | Método en `apiService` | Módulo Consumidor |
+| :--- | :--- | :--- | :--- |
+| **Healthcheck** | `GET /health` | `verificarSalud()` | `apiService.js` |
+| **DSS01P — Registro** | `POST /usuarios/registro` | `registrar(datos)` | `auth.js` (`AUTH.registrar`) |
+| **DSS02P — Login** | `POST /usuarios/login` | `login(correo, contrasena)` | `auth.js` (`AUTH.ingresar`) |
+| **DSS03P — Perfil** | `GET / PUT /usuarios/{id}` | `obtenerPerfil()` / `actualizarPerfil()` | `apiService.js` |
+| **Catálogo S3 (212 Barrios)** | `GET /busquedas/barrios` | `obtenerBarrios(q)` | `destinos.js` (`sincronizarBarriosDesdeAws`) |
+| **DSS04P — Búsqueda Unificada** | `POST /busquedas/` | `buscarOfertas(origen, destino, idUsuario)` | `flows.js` (`FLOW.mostrarOfertas`) |
+| **DSS05P — Solicitar Viaje** | `POST /viajes/solicitar` | `solicitarViaje(idOferta)` | `flows.js` (`FLOW.seleccionarOferta`) |
+| **Ciclo de Vida y Comisión** | `PATCH /viajes/{id}/estado` | `actualizarEstadoViaje(id, estado, precio)` | `flows.js` (`conductorEnCamino`, `iniciarViaje`, `finalizarViaje`, `confirmarCancelacion`) |
+| **DSS06P — Historial** | `GET /viajes/usuario/{id}` | `obtenerHistorialViajes(idUsuario)` | `ui.js` (`sincronizarHistorialDesdeAws`) |
+| **DSS01A — Comisión Activa** | `GET /comisiones/configuracion/activa` | `obtenerComisionActiva()` | `flows.js` (`sincronizarComisionVigente`) |
+
+---
+
+## 4. Cómo Cambiar la IP o Dominio del Backend en AWS
+
+Si la dirección IP pública de la instancia EC2 cambia al reiniciarla en AWS:
+
+1. **En el archivo `.env` (Recomendado)**:
+   Edita [`mobile/unix-driver-7.2/.env`](file:///c:/Users/ivans/Desktop/Repositorios/ISI-2026-2-G09/mobile/unix-driver-7.2/.env):
+   ```ini
+   UNIX_API_BASE_URL=http://TU_NUEVA_IP_EC2:8000
+   ```
+   Luego ejecuta `npm run env:sync` (o `npm run build:web` / `npm run sync`), lo que actualizará `www/config/api-env.js` automáticamente.
+2. **En caliente desde la consola de inspección (`chrome://inspect`)**:
+   ```javascript
+   apiService.setBaseUrl('http://TU_NUEVA_IP_EC2:8000');
+   ```
+
+---
+
+## 5. Compilación y Empaquetado del APK
+
+### Requisitos del Sistema
+- **Node.js** 20 LTS o superior
+- **JDK 21** (requerido por Gradle 8.11.1)
+- **Android SDK** (`platforms;android-35` y `build-tools;35.0.0`)
+
+### Comandos de Construcción
+
+Desde la carpeta `mobile/unix-driver-7.2`:
+
+```powershell
+# 1. Instalar dependencias de Node y Capacitor
 npm install
-code .
-```
 
-Al abrir, VS Code sugerirá las extensiones de `.vscode/extensions.json`:
-Java Extension Pack, XML, Prettier, Live Server, EditorConfig.
+# 2. Regenerar el bundle web autocontenido (UniX-Driver.html)
+npm run build:web
 
-Vista rápida del código:
-
-| Quiero cambiar… | Archivo |
-|---|---|
-| Textos, pantallas, estructura | `www/index.html` |
-| Colores, tamaños, estilos | `www/styles.css`, `www/styles-v2.css`, `www/styles-app.css` |
-| Tarifas, mínimo, 45 %, mapas | `www/config/tarifas.js` |
-| Cálculo del precio | `www/js/state.js` |
-| Flujo del viaje (buscar, ofertas, cancelar, pagar) | `www/js/flows.js` |
-| Registro / login / recuperación | `www/js/auth.js` + `www/js/boot.js` |
-| Buscador de lugares | `www/js/destinos.js` |
-| Selector de origen y GPS | `www/js/origen.js` |
-| Mapa y rutas OSRM | `www/js/mapa.js` |
-| Base de lugares (861 registros) | `www/data/destinos.json` |
-| Icono, nombre y permisos Android | `android/app/src/main/res/`, `AndroidManifest.xml` |
-
-Para ver solo la interfaz en el navegador: clic derecho en `www/index.html` → **Open with Live Server**.
-(El mapa y las rutas necesitan internet; el resto funciona igual.)
-
----
-
-## 5. Ejecutar en un teléfono
-
-1. En el teléfono: **Ajustes → Acerca del teléfono → toca 7 veces «Número de compilación»**.
-2. **Ajustes → Opciones de desarrollador → Depuración USB: activar**.
-3. Conecta el cable y acepta el aviso «¿Permitir depuración USB?».
-4. Comprueba que aparece:
-
-```bash
-adb devices
-```
-
-5. Instala y ejecuta:
-
-```bash
+# 3. Sincronizar activos web y configuración con el proyecto nativo Android
 npm run sync
+
+# 4. Compilar APK de depuración (listo para instalar en dispositivo o emulador)
 cd android
-./gradlew installDebug        # Windows: gradlew.bat installDebug
+.\gradlew.bat assembleDebug
 ```
 
-O instala el APK ya compilado:
-
-```bash
-adb install -r UniX_Driver_Final.apk
-```
+El APK compilado se genera en:
+`mobile/unix-driver-7.2/android/app/build/outputs/apk/debug/app-debug.apk`
 
 ---
 
-## 6. Compilar
+## 6. Estructura del Proyecto Mobile
 
-### Depuración (debug)
-
-```bash
-npm install
-npm run sync
-cd android
-./gradlew assembleDebug        # Windows: gradlew.bat assembleDebug
+```text
+mobile/unix-driver-7.2/
+├── www/                             # Aplicación Web empaquetada por Capacitor
+│   ├── index.html                   # Vistas SPA (Autenticación, Mapa, Ofertas, Viaje, Pago, Historial)
+│   ├── styles*.css                  # Hojas de estilo modulares
+│   ├── config/
+│   │   ├── api-env.js               # Autogenerado desde .env por tools/sync-env.js (ignorado en Git)
+│   │   ├── tarifas.js               # Configuración central (Tarifas, Mapas y Endpoints API)
+│   │   └── firebase-config.js       # Configuración opcional de Firebase
+│   ├── data/
+│   │   └── destinos.json            # Catálogo local base enriquecido en vivo desde AWS S3
+│   ├── js/
+│   │   ├── apiService.js            # Cliente HTTP centralizado hacia el Backend FastAPI
+│   │   ├── auth.js                  # Registro y login contra AWS RDS + respaldo SHA-256 local
+│   │   ├── destinos.js              # Buscador y sincronización de los 212 barrios con AWS S3
+│   │   ├── flows.js                 # Cotización (Uber/DiDi/inDrive), solicitud y estados del viaje
+│   │   ├── ui.js                    # Navegación, cuenta e historial sincronizado con RDS
+│   │   ├── state.js                 # Estado reactivo central y cálculo de tarifas por km
+│   │   ├── mapa.js                  # Integración Leaflet + rutas OSRM
+│   │   ├── origen.js                # Selector de origen y GPS
+│   │   ├── viaje.js                 # Vista de seguimiento en tiempo real
+│   │   └── boot.js                  # Inicialización de eventos y botón Atrás nativo
+│   └── img/                         # Logos oficiales de Uber, DiDi e inDrive
+├── android/                         # Proyecto nativo Android (Capacitor 7 + Gradle 8.11)
+│   └── app/src/main/
+│       ├── AndroidManifest.xml      # Permisos de Internet, GPS y usesCleartextTraffic="true"
+│       └── res/xml/
+│           └── network_security_config.xml # Política de seguridad de red para HTTP hacia AWS EC2
+├── tools/                           # Scripts de empaquetado web (build-html.js, build-destinos.js)
+├── tests/                           # Suite de pruebas automatizadas (JSDOM)
+├── capacitor.config.json            # Configuración de Capacitor (cleartext + mixed content habilitados)
+├── .env / .env.example              # Variables de entorno para conexión AWS
+└── package.json                     # Scripts de construcción y dependencias
 ```
-
-Resultado: `android/app/build/outputs/apk/debug/app-debug.apk`
-Se firma solo con la llave de depuración de Gradle, sin configuración extra.
-
-### Lanzamiento (release)
-
-```bash
-npm run sync
-cd android
-./gradlew assembleRelease      # Windows: gradlew.bat assembleRelease
-```
-
-Resultado: `android/app/build/outputs/apk/release/app-release.apk`
-(sin firmar si no creaste `android/keystore.properties`; ver punto 7).
-
-### Atajos incluidos en `package.json`
-
-```bash
-npm run build:web       # regenera data/destinos.js y UniX-Driver.html (vista previa de un solo archivo)
-npm run build:apk       # sync + assembleRelease (Linux/macOS)
-npm run build:apk:win   # sync + assembleRelease (Windows)
-npm test                # pruebas automáticas (jsdom)
-```
-
----
-
-## 7. Firmar el APK con tu propia llave
-
-Sin firma el APK de release **no se instala**. Pasos (una sola vez):
-
-```bash
-keytool -genkeypair -v -keystore android/unixdriver-release.keystore \
-  -alias unixdriver -keyalg RSA -keysize 2048 -validity 10000
-```
-
-Copia `keystore.properties.example` a `android/keystore.properties` y rellena:
-
-```properties
-storeFile=unixdriver-release.keystore
-storePassword=TU_CONTRASENA
-keyAlias=unixdriver
-keyPassword=TU_CONTRASENA
-```
-
-Vuelve a compilar con `./gradlew assembleRelease`: el APK saldrá firmado.
-
-Verificar la firma:
-
-```bash
-apksigner verify --print-certs android/app/build/outputs/apk/release/app-release.apk
-```
-
-> **Importante:** para actualizar una instalación existente sin desinstalar, el APK nuevo debe
-> firmarse con **la misma llave** que el anterior. La llave del APK entregado por nosotros es
-> privada y **no se incluye** en este ZIP; si instalas el tuyo encima del nuestro, Android
-> pedirá desinstalar primero. Es lo normal y esperado.
-
----
-
-## 8. Permisos de Android incluidos
-
-`android/app/src/main/AndroidManifest.xml`:
-
-- `INTERNET` y `ACCESS_NETWORK_STATE` — mapa, rutas OSRM, geocodificación, Firebase.
-- `ACCESS_COARSE_LOCATION` y `ACCESS_FINE_LOCATION` — botón «Usar mi ubicación actual».
-
-La app pide el permiso de ubicación solo cuando tocas ese botón.
-
----
-
-## 9. Errores frecuentes y solución
-
-| Error | Causa y solución |
-|---|---|
-| `SDK location not found` | Falta `android/local.properties` o `ANDROID_HOME`. Ver punto 3. |
-| `Unsupported class file major version` / `Unsupported Java` | JDK incorrecto. Usa **JDK 21** y verifica con `java -version`. |
-| `Could not find com.android.tools.build:gradle:8.7.2` | Sin internet la primera vez, o falta el repositorio `google()`. Conecta y reintenta. |
-| `cap: command not found` | No ejecutaste `npm install` en la raíz del proyecto. |
-| `Project ':capacitor-android' not found` | Falta `npx cap sync android` (regenera `android/capacitor.settings.gradle`). |
-| `App not installed` / `INSTALL_FAILED_UPDATE_INCOMPATIBLE` | La firma es distinta a la instalada. Desinstala la app anterior e instala la nueva. |
-| `INSTALL_FAILED_VERSION_DOWNGRADE` | El APK instalado tiene `versionCode` mayor. Sube `versionCode` en `android/app/build.gradle`. |
-| Gradle se queda sin memoria | Sube `org.gradle.jvmargs` en `android/gradle.properties` (p. ej. `-Xmx4096m`). |
-| El mapa no carga en el móvil | Sin internet, o el WebView no tiene teselas. Las rutas requieren conexión por diseño. |
-| `npm install` falla por permisos | No uses `sudo`. Borra `node_modules` y `package-lock.json` y reintenta. |
-
----
-
-## 10. Pruebas
-
-```bash
-npm install
-npm test
-```
-
-- `tests/test-v71.mjs` — 50 comprobaciones: tabla de tarifas y mínimos, pantalla sin textos
-  técnicos, autenticación completa (registro, correo repetido, contraseña incorrecta,
-  recuperación), comercios como origen y destino, ofertas y navegación.
-- `tests/test-boton.mjs` — 12 comprobaciones del botón «Crear cuenta» y del inicio de sesión.
-
-Ambas usan `jsdom` y simulan OSRM, por lo que **no necesitan internet ni un teléfono**.
-
----
-
-## 11. Estructura
-
-```
-unix-driver/
-├── www/                     # la app (esto es lo que se empaqueta)
-│   ├── index.html           # todas las pantallas
-│   ├── styles*.css          # estilos
-│   ├── config/              # tarifas, firebase
-│   ├── data/                # 861 lugares + tarifas
-│   ├── js/                  # lógica (auth, flows, mapa, state, ui…)
-│   ├── img/                 # logos de plataformas
-│   └── vendor/leaflet/      # Leaflet local
-├── android/                 # proyecto Android (Gradle + Capacitor)
-│   ├── app/src/main/        # manifest, Java, recursos, iconos
-│   ├── gradle/wrapper/      # Gradle 8.11.1
-│   ├── gradlew, gradlew.bat
-│   └── build.gradle, settings.gradle, variables.gradle
-├── tools/                   # scripts de mantenimiento de datos
-├── tests/                   # pruebas automáticas
-├── package.json             # dependencias y comandos
-├── capacitor.config.json
-├── keystore.properties.example
-└── .env.example
-```
-
-Detalle completo en **INVENTARIO_PROYECTO.md**; servicios externos en **CONFIGURACION_SERVICIOS.md**.
