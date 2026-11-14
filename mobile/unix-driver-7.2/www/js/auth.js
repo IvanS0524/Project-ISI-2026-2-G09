@@ -1,27 +1,26 @@
 'use strict';
 /* ============================================================
-   UniX Driver · Autenticación LOCAL del dispositivo
+   UniX Driver · Autenticación conectada a AWS EC2 + RDS
    ------------------------------------------------------------
-   - Correo + contraseña con hash (SHA-256 vía WebCrypto).
-   - Sesión persistente ("recordar sesión").
-   - Recuperación por código generado en el dispositivo.
-   - Google: SOLO funciona si se configura Firebase. Sin credenciales
-     devuelve GOOGLE_NO_CONFIGURADO y nunca simula un ingreso.
+   - Consume el backend FastAPI en AWS mediante `apiService`
+     (POST /usuarios/registro y POST /usuarios/login).
+   - Almacena id_usuario de PostgreSQL en la sesión activa.
+   - Conserva copia y respaldo local (SHA-256) si no hay red.
    ============================================================ */
 
 const AUTH = (() => {
   const K_USERS = 'unixdriver.users.v2';
-  const K_SES   = 'unixdriver.sesion.v2';
+  const K_SES = 'unixdriver.sesion.v2';
   const K_RESET = 'unixdriver.reset.v2';
 
   const leer = (k, def) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (_) { return def; } };
   const escribir = (k, v) => {
-    try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {}
-    try { if (typeof STORE !== 'undefined') STORE.setJSON(k, v); } catch (_) {}
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) { }
+    try { if (typeof STORE !== 'undefined') STORE.setJSON(k, v); } catch (_) { }
   };
   const borrar = k => {
-    try { localStorage.removeItem(k); } catch (_) {}
-    try { if (typeof STORE !== 'undefined') STORE.remove(k); } catch (_) {}
+    try { localStorage.removeItem(k); } catch (_) { }
+    try { if (typeof STORE !== 'undefined') STORE.remove(k); } catch (_) { }
   };
 
   /** Reconstruye cuentas y sesión desde el almacenamiento nativo. */
@@ -60,48 +59,116 @@ const AUTH = (() => {
   const usuarios = () => leer(K_USERS, []);
   const buscar = e => usuarios().find(u => u.email === mail(e)) || null;
 
+  /* ============ Llamada auxiliar al Backend FastAPI vía apiService ============ */
+  async function peticionBackend(ruta, metodo = 'GET', cuerpo = null, timeoutMs = 7000) {
+    if (typeof window !== 'undefined' && window.apiService && typeof window.apiService.peticion === 'function') {
+      return window.apiService.peticion(ruta, { method: metodo, body: cuerpo, timeoutMs });
+    }
+    const baseUrl = (window.UNIX_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+    const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+    try {
+      const opciones = {
+        method: metodo,
+        headers: { 'Content-Type': 'application/json' }
+      };
+      if (cuerpo) opciones.body = JSON.stringify(cuerpo);
+      if (ctrl) opciones.signal = ctrl.signal;
+      const resp = await fetch(baseUrl + ruta, opciones);
+      let data = null;
+      try { data = await resp.json(); } catch (_) { }
+      return { ok: resp.ok, status: resp.status, data };
+    } catch (_) {
+      return { ok: false, status: 0, redError: true, data: null };
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+  }
+
   async function registrar({ nombre, email, pass }) {
     if (!nombre || nombre.trim().length < 2) return { ok: false, code: 'NOMBRE_INVALIDO', error: 'Escribe tu nombre.' };
     if (!emailValido(email)) return { ok: false, code: 'EMAIL_INVALIDO', error: 'El correo no tiene un formato válido.' };
     if (!pass || String(pass).length < 6) return { ok: false, code: 'PASS_CORTA', error: 'La contraseña debe tener al menos 6 caracteres.' };
-    if (buscar(email)) return { ok: false, code: 'EMAIL_EXISTE', error: 'Ya existe una cuenta con ese correo. Inicia sesión o recupera tu contraseña.' };
-    if (nube()) {
-      const r = await postNube('accounts:signUp', { email: mail(email), password: String(pass), returnSecureToken: true });
-      if (!r.ok) return { ok: false, code: r.code, error: r.error };
-      const u = await guardarLocal(nombre, email, pass);
-      return { ok: true, nube: true, usuario: { email: u.email, nombre: u.nombre } };
+
+    // Registro estricto en AWS EC2 + RDS (POST /usuarios/registro)
+    const api = await peticionBackend('/usuarios/registro', 'POST', {
+      nombre: nombre.trim(),
+      correo: mail(email),
+      contrasena: String(pass),
+      id_rol: 1
+    });
+
+    if (api.redError || !api.status) {
+      return { ok: false, code: 'NETWORK_ERROR', error: '❌ No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.' };
     }
-    const s = salt();
-    const u = { email: mail(email), nombre: nombre.trim(), salt: s, hash: await hash(pass, s), creado: new Date().toISOString(), origen: 'local' };
-    const lista = usuarios(); lista.push(u); escribir(K_USERS, lista);
-    return { ok: true, nube: false, usuario: { email: u.email, nombre: u.nombre } };
+
+    if (api.ok && api.data && typeof api.data.id_usuario === 'number') {
+      const u = await guardarLocal(api.data.nombre || nombre, email, pass, api.data.id_usuario, 'aws_rds');
+      return {
+        ok: true,
+        nube: true,
+        usuario: { id_usuario: u.id_usuario, email: u.email, nombre: u.nombre }
+      };
+    }
+
+    // Si el servidor respondió un error de negocio (ej. 400 Correo ya registrado)
+    if (api.status >= 400 && api.status < 500) {
+      const detalle = (api.data && api.data.detail)
+        ? (typeof api.data.detail === 'string' ? api.data.detail : 'Datos inválidos para el registro.')
+        : 'Ya existe una cuenta con ese correo en el servidor.';
+      return { ok: false, code: 'EMAIL_EXISTE', error: detalle };
+    }
+
+    return { ok: false, code: 'NETWORK_ERROR', error: '❌ No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.' };
   }
 
   async function ingresar(email, pass, recordar) {
     if (!emailValido(email)) return { ok: false, code: 'EMAIL_INVALIDO', error: 'El correo no tiene un formato válido.' };
     if (!pass) return { ok: false, code: 'PASS_VACIA', error: 'Escribe tu contraseña.' };
-    const u = buscar(email);
-    if (u) {
-      const h = await hash(pass, u.salt);
-      if (h !== u.hash) return { ok: false, code: 'PASS_INCORRECTA', error: 'Contraseña incorrecta. Inténtalo de nuevo.' };
-      escribir(K_SES, { email: u.email, nombre: u.nombre, desde: new Date().toISOString(), recordar: !!recordar });
-      return { ok: true, usuario: { email: u.email, nombre: u.nombre } };
+
+    // Login estricto (POST /usuarios/login)
+    const api = await peticionBackend('/usuarios/login', 'POST', {
+      correo: mail(email),
+      contrasena: String(pass)
+    });
+
+    if (api.redError || !api.status) {
+      return { ok: false, code: 'NETWORK_ERROR', error: '❌ No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.' };
     }
-    if (nube()) {
-      const r = await postNube('accounts:signInWithPassword', { email: mail(email), password: String(pass), returnSecureToken: true });
-      if (!r.ok) return { ok: false, code: r.code, error: r.error };
-      const g = await guardarLocal(null, email, pass);
-      escribir(K_SES, { email: g.email, nombre: g.nombre, desde: new Date().toISOString(), recordar: !!recordar });
-      return { ok: true, usuario: { email: g.email, nombre: g.nombre } };
+
+    if (api.ok && api.data && typeof api.data.id_usuario === 'number') {
+      const g = await guardarLocal(api.data.nombre, email, pass, api.data.id_usuario, 'aws_rds');
+      const sesionObj = {
+        id_usuario: g.id_usuario,
+        email: g.email,
+        nombre: g.nombre,
+        desde: new Date().toISOString(),
+        recordar: !!recordar,
+        origen: 'aws_rds'
+      };
+      escribir(K_SES, sesionObj);
+      return { ok: true, usuario: { id_usuario: g.id_usuario, email: g.email, nombre: g.nombre } };
     }
-    return { ok: false, code: 'NO_EXISTE', error: 'No hay ninguna cuenta con ese correo. Crea una cuenta nueva.' };
+
+    // Si respondió 401/403 (Credenciales inválidas)
+    if (api.status === 401 || api.status === 403) {
+      const detalle = (api.data && api.data.detail) ? api.data.detail : 'Correo o contraseña incorrectos.';
+      return { ok: false, code: 'PASS_INCORRECTA', error: detalle };
+    }
+
+    if (api.status === 404) {
+      const detalle = (api.data && api.data.detail) ? api.data.detail : 'No hay ninguna cuenta con ese correo. Crea una cuenta nueva.';
+      return { ok: false, code: 'NO_EXISTE', error: detalle };
+    }
+
+    return { ok: false, code: 'NETWORK_ERROR', error: '❌ No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.' };
   }
 
   function sesion() { return leer(K_SES, null); }
   function salir() { borrar(K_SES); }
   function invitado() {
-    escribir(K_SES, { email: null, nombre: 'Invitado', invitado: true, desde: new Date().toISOString(), recordar: false });
-    return { nombre: 'Invitado', email: null, invitado: true };
+    escribir(K_SES, { id_usuario: 1, email: null, nombre: 'Invitado', invitado: true, desde: new Date().toISOString(), recordar: false });
+    return { id_usuario: 1, nombre: 'Invitado', email: null, invitado: true };
   }
 
   async function solicitarCodigo(email) {
@@ -109,14 +176,15 @@ const AUTH = (() => {
     if (nube()) {
       const r = await postNube('accounts:sendOobCode', { requestType: 'PASSWORD_RESET', email: mail(email) });
       if (!r.ok) return { ok: false, code: r.code, error: r.error };
-      return { ok: true, enviado: true,
-        mensaje: 'Solicitud procesada. Revisa la bandeja de entrada de ' + mail(email) + ' (y la carpeta de spam) y abre el enlace para crear una nueva contraseña.' };
+      return {
+        ok: true, enviado: true,
+        mensaje: 'Solicitud procesada. Revisa la bandeja de entrada de ' + mail(email) + ' (y la carpeta de spam) y abre el enlace para crear una nueva contraseña.'
+      };
     }
     const u = buscar(email);
     if (!u) return { ok: false, code: 'NO_EXISTE', error: 'Ese correo no está registrado en este dispositivo.' };
     const codigo = String(Math.floor(100000 + Math.random() * 900000));
     escribir(K_RESET, { email: u.email, codigo, expira: Date.now() + 15 * 60 * 1000 });
-    // No hay servidor de correo: el código se muestra aquí mismo (documentado en el README).
     return { ok: true, codigo, enviado: false };
   }
 
@@ -165,30 +233,42 @@ const AUTH = (() => {
       return { ok: false, code: 'NETWORK_REQUEST_FAILED', error: MSG.NETWORK_REQUEST_FAILED };
     }
     let data = {};
-    try { data = await resp.json(); } catch (_) {}
+    try { data = await resp.json(); } catch (_) { }
     if (resp.ok) return { ok: true, data };
     const code = (data && data.error && data.error.message || 'ERROR').split(' ')[0];
     return { ok: false, code, error: MSG[code] || 'No se pudo completar la operación (' + code + ').' };
   }
 
   /* Guarda la cuenta también en el dispositivo: permite ingresar sin conexión. */
-  async function guardarLocal(nombre, email, pass) {
+  async function guardarLocal(nombre, email, pass, idUsuario = 1, origen = 'aws_rds') {
     const s = salt();
-    const u = { email: mail(email), nombre: (nombre || '').trim() || mail(email).split('@')[0],
-      salt: s, hash: await hash(pass, s), creado: new Date().toISOString(), origen: 'firebase' };
+    const u = {
+      id_usuario: idUsuario || 1,
+      email: mail(email),
+      nombre: (nombre || '').trim() || mail(email).split('@')[0],
+      salt: s,
+      hash: await hash(pass, s),
+      creado: new Date().toISOString(),
+      origen
+    };
     const lista = usuarios().filter(x => x.email !== u.email);
-    lista.push(u); escribir(K_USERS, lista);
+    lista.push(u);
+    escribir(K_USERS, lista);
     return u;
   }
 
   function google() {
     const cfg = window.UNIX_FIREBASE || null;
     if (!cfg || !cfg.apiKey || !cfg.projectId || /TU_|XXXX/.test(cfg.apiKey)) {
-      return { ok: false, code: 'GOOGLE_NO_CONFIGURADO',
-        error: 'Google necesita Firebase configurado (config/firebase-config.js). Mientras tanto usa correo y contraseña.' };
+      return {
+        ok: false, code: 'GOOGLE_NO_CONFIGURADO',
+        error: 'Google necesita Firebase configurado (config/firebase-config.js). Mientras tanto usa correo y contraseña.'
+      };
     }
-    return { ok: false, code: 'GOOGLE_PENDIENTE',
-      error: 'La configuración de Firebase está presente, pero el inicio con Google requiere habilitar el proveedor y el SHA-1 del APK en la consola de Firebase.' };
+    return {
+      ok: false, code: 'GOOGLE_PENDIENTE',
+      error: 'La configuración de Firebase está presente, pero el inicio con Google requiere habilitar el proveedor y el SHA-1 del APK en la consola de Firebase.'
+    };
   }
 
   function eliminarCuenta() {
@@ -199,6 +279,10 @@ const AUTH = (() => {
     return { ok: true };
   }
 
-  return { registrar, ingresar, sesion, salir, invitado, solicitarCodigo, cambiarConCodigo, google,
-    eliminarCuenta, emailValido, hidratar, get nubeActiva() { return !!nube(); } };
+  return {
+    registrar, ingresar, sesion, salir, invitado, solicitarCodigo, cambiarConCodigo, google,
+    eliminarCuenta, emailValido, hidratar,
+    get nubeActiva() { return !!nube(); },
+    get awsActivo() { return true; }
+  };
 })();

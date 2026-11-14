@@ -1,15 +1,10 @@
 'use strict';
 /* ============================================================
-   UniX Driver · Flujos del viaje
-   origen + destino libres → ruta por carretera → precio por km
-   → solicitud → asignación → en camino → llegó → en curso →
-   completado / cancelado.
-
-   Reglas de precio:
-   · El precio SOLO existe si hay distancia por carretera.
-   · Si la tarifa no está configurada, no se muestra precio y no
-     se permite solicitar el viaje.
-   · Cada cambio de origen, destino o vehículo recalcula todo.
+   UniX Driver · Flujos del viaje (Conectado a AWS EC2 + S3 + RDS)
+   origen + destino libres → ruta por carretera (OSRM) →
+   búsqueda unificada en AWS (POST /busquedas/) →
+   solicitud en RDS (POST /viajes/solicitar) →
+   estados y liquidación de comisión (PATCH /viajes/{id}/estado).
    ============================================================ */
 
 const PLATAFORMAS = [
@@ -23,6 +18,7 @@ const VEH_CARRO = ['Kia Picanto', 'Renault Logan', 'Chevrolet Onix', 'Toyota Cor
 
 const FLOW = (() => {
   let motivoSel = null;
+  let comisionActivaPct = COMISION_PCT;
   const pasoMinMs = 1000;      // 1 s = 1 min en la cuenta regresiva
   let rutaSeq = 0;             // evita resultados de peticiones antiguas
 
@@ -38,6 +34,47 @@ const FLOW = (() => {
   const nombreOrigen = () => (trip && trip.origen ? trip.origen.nombre : 'Origen');
   const nombreDestino = () => (trip && trip.destino ? trip.destino.nombre : 'Destino');
 
+  /* Sincroniza el porcentaje de comisión vigente en AWS RDS (GET /comisiones/configuracion/activa) */
+  async function sincronizarComisionVigente() {
+    if (typeof window === 'undefined' || !window.apiService || typeof window.apiService.obtenerComisionActiva !== 'function') return;
+    try {
+      const cfg = await window.apiService.obtenerComisionActiva();
+      const pct = Number(cfg && cfg.porcentaje);
+      if (isFinite(pct) && pct >= 0 && pct <= 100) {
+        comisionActivaPct = pct / 100;
+      }
+    } catch (_) { }
+  }
+  setTimeout(sincronizarComisionVigente, 400);
+
+  /* Helper para obtener el id_usuario autenticado en RDS (o 1 por defecto) */
+  function obtenerIdUsuarioActivo() {
+    try {
+      const s = (typeof AUTH !== 'undefined' && AUTH.sesion) ? AUTH.sesion() : null;
+      if (s && s.id_usuario) return Number(s.id_usuario);
+    } catch (_) { }
+    return 1;
+  }
+
+  /* Helper para sincronizar el estado del viaje en AWS RDS (PATCH /viajes/{id}/estado) */
+  async function actualizarEstadoViajeBackend(idViaje, nuevoEstado, precioFinal = null) {
+    if (!idViaje) return;
+    try {
+      if (typeof window !== 'undefined' && window.apiService && typeof window.apiService.actualizarEstadoViaje === 'function') {
+        await window.apiService.actualizarEstadoViaje(idViaje, nuevoEstado, precioFinal);
+        return;
+      }
+      const apiUrl = (window.UNIX_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+      const body = { estado: nuevoEstado };
+      if (precioFinal != null) body.precio_final = Number(precioFinal);
+      await fetch(`${apiUrl}/viajes/${idViaje}/estado`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+    } catch (_) { }
+  }
+
   /* ============ 1. Origen y destino ============ */
   function elegirOrigen(o) {
     if (!trip || !o) return;
@@ -47,10 +84,12 @@ const FLOW = (() => {
     }
     trip.origen = {
       nombre: o.nombre || 'Punto de origen',
+      barrio: o.barrio || o.nombre || 'Cartagena',
       direccion: o.direccion || '',
       lat: Number(o.lat), lon: Number(o.lon), fuente: o.fuente || 'manual'
     };
     setText('origenLabel', trip.origen.nombre);
+    setText('resOrigen', trip.origen.nombre);
     setText('origenSub', [trip.origen.direccion, trip.origen.fuente === 'gps' ? 'ubicación actual' : null]
       .filter(Boolean).join(' · ') || 'Origen seleccionado');
     UI.setNotice('searchNotice', '');
@@ -65,6 +104,7 @@ const FLOW = (() => {
     }
     trip.destino = d;
     setText('destinoLabel', d.nombre);
+    setText('resDestino', d.nombre);
     setText('destinoSub', [d.categoria, d.barrio && d.barrio !== d.nombre ? d.barrio : null]
       .filter(Boolean).join(' · '));
     UI.setNotice('searchNotice', '');
@@ -171,7 +211,7 @@ const FLOW = (() => {
     if (btn) { btn.disabled = false; btn.textContent = '🔍 Buscar conductor'; }
   }
 
-  /* ============ 3. Buscar conductores ============ */
+  /* ============ 3. Buscar conductores (Conectado a POST /busquedas/ en AWS) ============ */
   function buscarViajes() {
     const s = estadoActual();
     if (!trip || ![ESTADOS.INICIAL, ESTADOS.CANCELADO].includes(s)) {
@@ -202,41 +242,109 @@ const FLOW = (() => {
     UI.setNotice('offersNotice', '');
 
     const aviso = $('offersSimBadge');
-    const noIntegrado = (window.UNIX_CONFIG && UNIX_CONFIG.integraciones && UNIX_CONFIG.integraciones.plataformas) === 'no_integrado';
     if (aviso) {
-      aviso.classList.toggle('hidden', !noIntegrado);
-      aviso.textContent = noIntegrado ? 'Tarifas de referencia · la reserva se confirma dentro de UniX Driver.' : '';
+      aviso.classList.add('hidden');
+      aviso.textContent = '';
     }
     UI.goToScreen(2);
 
     const rid = trip.requestId;
-    later(() => { if (trip.requestId === rid && trip.estado === ESTADOS.BUSCANDO) mostrarOfertas(); }, 2200);
-    later(() => {
-      const cont = $('offers');
-      if (trip.requestId === rid && trip.estado === ESTADOS.BUSCANDO && cont && !cont.innerHTML) mostrarOfertas();
-    }, 6000);
+    later(() => { if (trip.requestId === rid && trip.estado === ESTADOS.BUSCANDO) mostrarOfertas(); }, 900);
   }
 
-  function mostrarOfertas() {
+  async function mostrarOfertas() {
     if (!trip || trip.estado !== ESTADOS.BUSCANDO || !trip.tarifaOk) return;
-    const base = trip.tarifa;
+    const rid = trip.requestId;
     const esMoto = trip.vehiculo === 'moto';
-    trip.ofertas = PLATAFORMAS.map(p => {
-      const variacion = 0.97 + ((trip.requestId * 7 + p.eta) % 7) / 100;
-      return {
-        plataforma: p.nombre,
-        plataformaId: p.id,
-        precio: Math.max(1000, r2(base * p.factor * variacion)),
-        etaMin: p.eta,
-        conductor: pick(CONDUCTORES),
-        vehiculo: pick(esMoto ? VEH_MOTO : VEH_CARRO),
-        placa: placa(),
-        rating: (4 + ((trip.requestId + p.eta) % 9) / 10).toFixed(1)
-      };
-    });
-    const mejor = trip.ofertas.reduce((a, b) => (b.precio < a.precio ? b : a), trip.ofertas[0]);
+    let ofertasCargadas = null;
+
+    // 1. Consultar motor de búsqueda unificada en AWS EC2 (POST /busquedas/) vía apiService
+    try {
+      const textoOrigen = (trip.origen.barrio || trip.origen.nombre || 'Centro').trim();
+      const textoDestino = (trip.destino.barrio || trip.destino.nombre || 'Bocagrande').trim();
+      const origenFinal = textoOrigen.toLowerCase() === textoDestino.toLowerCase()
+        ? textoOrigen + ' (Origen)'
+        : textoOrigen;
+
+      let data = null;
+      if (typeof window !== 'undefined' && window.apiService && typeof window.apiService.buscarOfertas === 'function') {
+        data = await window.apiService.buscarOfertas(origenFinal, textoDestino, obtenerIdUsuarioActivo());
+      } else {
+        const apiUrl = (window.UNIX_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+        const resp = await fetch(`${apiUrl}/busquedas/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            origen: origenFinal,
+            destino: textoDestino,
+            id_usuario: obtenerIdUsuarioActivo()
+          })
+        });
+        if (resp.ok) data = await resp.json();
+      }
+
+      if (data && Array.isArray(data.ofertas) && data.ofertas.length > 0) {
+        trip.id_busqueda = data.id_busqueda;
+        ofertasCargadas = data.ofertas.map(of => {
+          const nombrePlat = (of.plataforma && of.plataforma.nombre) ? of.plataforma.nombre : 'Uber';
+          const platId = nombrePlat.toLowerCase().includes('didi')
+            ? 'didi'
+            : (nombrePlat.toLowerCase().includes('indrive') ? 'indrive' : 'uber');
+          const precioApi = Number(of.precio_estimado) || trip.tarifa;
+          const precioAjustado = esMoto ? Math.max(5000, r2(precioApi * 0.45)) : r2(precioApi);
+          const vehTexto = of.vehiculo
+            ? `${of.vehiculo.marca} ${of.vehiculo.modelo}`.trim()
+            : 'Vehículo asignado';
+
+          return {
+            id_oferta: of.id_oferta,
+            plataforma: nombrePlat,
+            plataformaId: platId,
+            precio: precioAjustado,
+            etaMin: Number(of.tiempo_estimado) || 5,
+            conductor: (of.conductor && of.conductor.nombre) ? of.conductor.nombre : 'Conductor verificado',
+            vehiculo: vehTexto,
+            placa: (of.vehiculo && of.vehiculo.placa) ? of.vehiculo.placa : '---',
+            rating: (of.conductor && of.conductor.calificacion)
+              ? Number(of.conductor.calificacion).toFixed(1)
+              : '4.8'
+          };
+        });
+      }
+    } catch (_) {
+      ofertasCargadas = null;
+    }
+
+    if (trip.requestId !== rid || trip.estado !== ESTADOS.BUSCANDO) return;
+
     const cont = $('offers');
     const radar = $('radarPanel');
+    const btn = $('btnBuscar');
+
+    // Si falla la petición a POST /busquedas/ o no devuelve ofertas
+    if (!ofertasCargadas || !ofertasCargadas.length) {
+      if (radar) radar.classList.add('hidden');
+      if (cont) {
+        cont.classList.add('hidden');
+        cont.innerHTML = '';
+      }
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = '🔍 Buscar conductor';
+      }
+      trip.estado = ESTADOS.INICIAL;
+      UI.setNotice(
+        'offersNotice',
+        '❌ No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.',
+        'error'
+      );
+      return;
+    }
+
+    trip.ofertas = ofertasCargadas;
+    // La primera oferta de la API ya viene recomendada por el ranking multicriterio
+    const mejor = trip.ofertas[0];
+
     if (radar) radar.classList.add('hidden');
     cont.classList.remove('hidden');
     cont.innerHTML = trip.ofertas.map((o, i) => `
@@ -250,23 +358,62 @@ const FLOW = (() => {
         </div>
         <div class="offer-right">
           <div class="price">${money(o.precio)}</div>
-          ${o === mejor ? '<span class="recommend">MEJOR PRECIO</span>' : ''}
+          ${o === mejor ? '<span class="recommend">RECOMENDADA</span>' : ''}
         </div>
       </div>`).join('');
     UI.setNotice('offersNotice', '✅ ' + trip.ofertas.length + ' ofertas disponibles para ' + kmTexto(trip.rutaKm) + '. Toca una para continuar.', 'success');
-    const btn = $('btnBuscar');
     if (btn) { btn.disabled = false; btn.textContent = '🔍 Buscar conductor'; }
   }
 
-  /* ============ 4. Conductor asignado ============ */
-  function seleccionarOferta(i) {
+  /* ============ 4. Conductor asignado (Conectado a POST /viajes/solicitar) ============ */
+  async function seleccionarOferta(i) {
     if (!trip || trip.estado !== ESTADOS.BUSCANDO) return;
-    const o = trip.ofertas[i];
-    if (!o) return;
+    const o = trip.ofertas && trip.ofertas[i];
+    if (!o || !o.id_oferta) {
+      UI.setNotice(
+        'offersNotice',
+        '❌ La oferta seleccionada ya no está disponible. Realiza una nueva búsqueda.',
+        'error'
+      );
+      return;
+    }
+
+    // Exigir registro exitoso del viaje (POST /viajes/solicitar) antes de avanzar
+    let idViajeReal = null;
+    try {
+      if (typeof window !== 'undefined' && window.apiService && typeof window.apiService.solicitarViaje === 'function') {
+        const dataViaje = await window.apiService.solicitarViaje(o.id_oferta);
+        if (dataViaje && dataViaje.id_viaje) idViajeReal = dataViaje.id_viaje;
+      } else {
+        const apiUrl = (window.UNIX_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+        const resp = await fetch(`${apiUrl}/viajes/solicitar`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id_oferta: o.id_oferta })
+        });
+        if (resp.ok) {
+          const dataViaje = await resp.json();
+          if (dataViaje && dataViaje.id_viaje) idViajeReal = dataViaje.id_viaje;
+        }
+      }
+    } catch (_) {
+      idViajeReal = null;
+    }
+
+    if (!idViajeReal) {
+      UI.setNotice(
+        'offersNotice',
+        '❌ No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.',
+        'error'
+      );
+      return;
+    }
+
     trip.oferta = o;
     trip.tarifa = o.precio;
-    trip.comision = Math.round(o.precio * COMISION_PCT);
+    trip.comision = Math.round(o.precio * comisionActivaPct);
     trip.etaMin = o.etaMin;
+    trip.id_viaje = idViajeReal;
     trip.estado = ESTADOS.ASIGNADO;
 
     setText('aNombre', o.conductor);
@@ -285,6 +432,8 @@ const FLOW = (() => {
   function conductorEnCamino() {
     if (!trip || trip.estado !== ESTADOS.ASIGNADO) return;
     trip.estado = ESTADOS.EN_CAMINO;
+    if (trip.id_viaje) actualizarEstadoViajeBackend(trip.id_viaje, 'ACEPTADO');
+
     const o = trip.oferta;
     setText('cNombre', o.conductor);
     setText('cVehiculo', (trip.vehiculo === 'carro' ? '🚗 ' : '🏍️ ') + o.vehiculo);
@@ -332,6 +481,8 @@ const FLOW = (() => {
       return;
     }
     trip.estado = ESTADOS.EN_CURSO;
+    if (trip.id_viaje) actualizarEstadoViajeBackend(trip.id_viaje, 'EN_CURSO');
+
     setText('tDestino', nombreOrigen() + ' → ' + nombreDestino());
     setText('tConductor', trip.oferta.conductor);
     setText('tVehiculo', (trip.vehiculo === 'carro' ? '🚗 ' : '🏍️ ') + trip.oferta.vehiculo + ' · ' + trip.oferta.placa);
@@ -339,7 +490,7 @@ const FLOW = (() => {
     const dur = Math.max(12, Math.min(30, Math.round(kmRuta * 2) || 12));
     setText('tEta', (trip.rutaMin ? trip.rutaMin + ' min por carretera' : Math.round(kmRuta / 0.32) + ' min aprox.'));
     if (typeof MAPA !== 'undefined') {
-      setTimeout(() => { try { MAPA.mostrarRuta('mapaViaje', 'rutaBarViaje', trip.origen, trip.destino); } catch (_) {} }, 160);
+      setTimeout(() => { try { MAPA.mostrarRuta('mapaViaje', 'rutaBarViaje', trip.origen, trip.destino); } catch (_) { } }, 160);
     }
     setText('tEstado', 'Recorrido en progreso…');
     const ve = $('vehicleEmoji');
@@ -361,7 +512,7 @@ const FLOW = (() => {
     }, 1000);
   }
 
-  /* ============ 7. Cobro ============ */
+  /* ============ 7. Cobro (Liquida comisión automáticamente en AWS RDS) ============ */
   function finalizarViaje() {
     if (!trip || trip.estado !== ESTADOS.EN_CURSO) return;
     trip.estado = ESTADOS.COMPLETADO;
@@ -369,7 +520,9 @@ const FLOW = (() => {
     const road = $('road');
     if (road) road.classList.remove('running');
     const tarifa = trip.tarifa;
-    const comision = Math.round(tarifa * COMISION_PCT);
+    if (trip.id_viaje) actualizarEstadoViajeBackend(trip.id_viaje, 'COMPLETADO', tarifa);
+
+    const comision = Math.round(tarifa * comisionActivaPct);
     setText('fareBig', money(tarifa));
     setText('fareRoute', nombreOrigen() + ' → ' + nombreDestino() + ' · ' + kmTexto(trip.rutaKm));
     setText('fare', money(tarifa));
@@ -383,13 +536,13 @@ const FLOW = (() => {
     if (!trip || trip.estado !== ESTADOS.COMPLETADO) return;
     const metodo = ($('metodoPago') || {}).value || 'tarjeta';
     const tarifa = trip.tarifa;
-    const comision = Math.round(tarifa * COMISION_PCT);
+    const comision = Math.round(tarifa * comisionActivaPct);
     const recibo = 'REC-' + Date.now().toString(36).toUpperCase().slice(-6);
     trip.pago = { metodo, monto: tarifa, comision, neto: tarifa - comision, folio: recibo };
     trip.estado = 'pagado';
 
     guardarEnHistorial({
-      id: 'V-' + Date.now().toString(36).toUpperCase(),
+      id: trip.id_viaje ? ('V-' + trip.id_viaje) : ('V-' + Date.now().toString(36).toUpperCase()),
       fecha: ahoraTexto(),
       origen: nombreOrigen(),
       origen_direccion: trip.origen.direccion || '',
@@ -425,7 +578,7 @@ const FLOW = (() => {
         <div class="row"><span class="label">Plataforma</span><span class="value">${trip.oferta.plataforma}</span></div>
         <div class="row"><span class="label">Método de pago</span><span class="value">${metodo}</span></div>
         <div class="row"><span class="label">Tarifa</span><span class="value">${money(tarifa)}</span></div>
-        <div class="row"><span class="label">Comisión UniX 10%</span><span class="value">${money(comision)}</span></div>
+        <div class="row"><span class="label">Comisión UniX</span><span class="value">${money(comision)}</span></div>
         <div class="row"><span class="label">Neto conductor</span><span class="value">${money(tarifa - comision)}</span></div>`;
     }
     UI.goToScreen(8);
@@ -491,12 +644,14 @@ const FLOW = (() => {
       UI.ocultar('cancelOverlay');
       return;
     }
+    if (trip.id_viaje) actualizarEstadoViajeBackend(trip.id_viaje, 'CANCELADO', 0);
+
     const motivoTexto = motivoSel === 'Otro motivo'
       ? 'Otro motivo: ' + ($('cancelOtro').value.trim() || 'sin detalle')
       : (motivoSel || 'Sin motivo indicado');
 
     guardarEnHistorial({
-      id: 'V-' + Date.now().toString(36).toUpperCase(),
+      id: trip.id_viaje ? ('V-' + trip.id_viaje) : ('V-' + Date.now().toString(36).toUpperCase()),
       fecha: ahoraTexto(),
       origen: nombreOrigen(),
       origen_direccion: trip.origen ? (trip.origen.direccion || '') : '',

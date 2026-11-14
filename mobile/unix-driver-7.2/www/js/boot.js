@@ -93,7 +93,7 @@ const AUTH_UI = (() => {
       return;
     }
     document.getElementById('recPaso2').classList.remove('hidden');
-    set('recNotice', '🔑 Código de recuperación: <b>' + r.codigo + '</b><br><small>Cuenta local del dispositivo: no se envía correo, usa este código para crear la nueva contraseña.</small>', 'success');
+    set('recNotice', '🔑 Código de recuperación: <b>' + r.codigo + '</b><br><small>Usa este código para crear tu nueva contraseña.</small>', 'success');
   }
 
   async function cambiarConCodigo() {
@@ -128,7 +128,7 @@ const AUTH_UI = (() => {
   }
 
   function borrarCuenta() {
-    if (window.confirm && !window.confirm('¿Eliminar la cuenta local y sus datos de sesión? El historial de viajes se conserva.')) return;
+    if (window.confirm && !window.confirm('¿Eliminar tu cuenta y los datos de sesión en este dispositivo? El historial de viajes se conserva.')) return;
     AUTH.eliminarCuenta();
     UI.cerrarCuenta();
     UI.actualizarBadgeUsuario();
