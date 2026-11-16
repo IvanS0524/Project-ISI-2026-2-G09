@@ -5,6 +5,17 @@
 
 const AUTH_UI = (() => {
   const set = (id, txt, cls) => UI.setNotice(id, txt, cls);
+  const SVG_ARROW_RIGHT = '<svg class="ico-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>';
+  const SVG_EYE_OFF = '<svg class="ico-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+  const SVG_EYE_ON = '<svg class="ico-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+
+  function togglePass(inputId, btn) {
+    const inp = document.getElementById(inputId);
+    if (!inp) return;
+    const mostrar = inp.type === 'password';
+    inp.type = mostrar ? 'text' : 'password';
+    if (btn) btn.innerHTML = mostrar ? SVG_EYE_ON : SVG_EYE_OFF;
+  }
 
   function tab(nombre) {
     const n = (nombre === 'registro' || nombre === 'recuperar') ? nombre : 'login';
@@ -13,6 +24,20 @@ const AUTH_UI = (() => {
       const el = document.getElementById(id);
       if (el) el.classList.toggle('hidden', k !== n);
     });
+    const titleEl = document.getElementById('authHeroTitle');
+    const subEl = document.getElementById('authHeroSub');
+    if (titleEl && subEl) {
+      if (n === 'registro') {
+        titleEl.innerHTML = 'Crea tu<br>cuenta';
+        subEl.textContent = 'Regístrate para comparar y elegir el mejor transporte en Cartagena.';
+      } else if (n === 'recuperar') {
+        titleEl.innerHTML = 'Recuperar<br>acceso';
+        subEl.textContent = 'Ingresa tu correo registrado para restablecer tu contraseña.';
+      } else {
+        titleEl.innerHTML = '¡Bienvenido<br>de nuevo!';
+        subEl.textContent = 'Inicia sesión para comparar y elegir el mejor transporte en Cartagena.';
+      }
+    }
     // Si la pantalla de acceso está oculta, se muestra (p. ej. al tocar "Crear cuenta" desde otro sitio)
     try { if (typeof UI !== 'undefined' && UI.goToScreen) UI.goToScreen(0, false); } catch (_) {}
     const panel = document.getElementById('tab' + n.charAt(0).toUpperCase() + n.slice(1));
@@ -34,12 +59,12 @@ const AUTH_UI = (() => {
     const rec = document.getElementById('aRecordar').checked;
     set('authNotice', '');
     const btn = document.getElementById('authBtn');
-    btn.disabled = true; btn.textContent = 'Verificando…';
+    btn.disabled = true; btn.innerHTML = '<span>Verificando…</span>';
     let r;
     try { r = await AUTH.ingresar(email, pass, rec); }
     catch (e) { r = { ok: false, error: 'No se pudo verificar la cuenta. Inténtalo de nuevo.' }; }
-    btn.disabled = false; btn.textContent = 'Ingresar';
-    if (!r.ok) { set('authNotice', '⚠️ ' + r.error, 'error'); return; }
+    btn.disabled = false; btn.innerHTML = '<span>Iniciar sesión</span>' + SVG_ARROW_RIGHT;
+    if (!r.ok) { set('authNotice', r.error, 'error'); return; }
     document.getElementById('aPass').value = '';
     set('authNotice', '');
     entrar(r.usuario);
@@ -52,10 +77,10 @@ const AUTH_UI = (() => {
     const pass2 = document.getElementById('rPass2').value;
     set('regNotice', '');
     // Validaciones en el orden en que el usuario llena el formulario
-    if (nombre.length < 2) { set('regNotice', '⚠️ Escribe tu nombre completo.', 'error'); return; }
-    if (!AUTH.emailValido(email)) { set('regNotice', '⚠️ El correo no tiene un formato válido (ejemplo: nombre@correo.com).', 'error'); return; }
-    if (!pass || String(pass).length < 6) { set('regNotice', '⚠️ La contraseña debe tener al menos 6 caracteres.', 'error'); return; }
-    if (pass !== pass2) { set('regNotice', '⚠️ Las contraseñas no coinciden.', 'error'); return; }
+    if (nombre.length < 2) { set('regNotice', 'Escribe tu nombre completo.', 'error'); return; }
+    if (!AUTH.emailValido(email)) { set('regNotice', 'El correo no tiene un formato válido (ejemplo: nombre@correo.com).', 'error'); return; }
+    if (!pass || String(pass).length < 6) { set('regNotice', 'La contraseña debe tener al menos 6 caracteres.', 'error'); return; }
+    if (pass !== pass2) { set('regNotice', 'Las contraseñas no coinciden.', 'error'); return; }
 
     const btn = document.getElementById('regBtn');
     btn.disabled = true; btn.textContent = 'Creando cuenta…';
@@ -65,35 +90,34 @@ const AUTH_UI = (() => {
     btn.disabled = false; btn.textContent = 'Crear mi cuenta';
     if (!r.ok) {
       const existe = r.code === 'EMAIL_EXISTE' || r.code === 'EMAIL_EXISTS';
-      set('regNotice', '⚠️ ' + r.error + (existe ? ' <b>¿Olvidaste tu contraseña?</b>' : ''), 'error');
+      set('regNotice', r.error + (existe ? ' <b>¿Olvidaste tu contraseña?</b>' : ''), 'error');
       return;
     }
-    set('regNotice', '✅ Cuenta creada para <b>' + r.usuario.email + '</b>. Ya puedes ingresar.', 'success');
+    set('regNotice', 'Cuenta creada para <b>' + r.usuario.email + '</b>. Ya puedes ingresar.', 'success');
     document.getElementById('aEmail').value = r.usuario.email;
     document.getElementById('aPass').value = '';
-    setTimeout(() => { tab('login'); set('authNotice', '✅ Cuenta creada. Escribe tu contraseña para ingresar.', 'success');
+    setTimeout(() => { tab('login'); set('authNotice', 'Cuenta creada. Escribe tu contraseña para ingresar.', 'success');
       const ap = document.getElementById('aPass'); if (ap) { try { ap.focus(); } catch (_) {} } }, 900);
   }
 
   async function solicitarCodigo() {
     const email = (document.getElementById('recEmail').value || '').trim();
     set('recNotice', '');
-    if (!AUTH.emailValido(email)) { set('recNotice', '⚠️ Escribe un correo válido (ejemplo: nombre@correo.com).', 'error'); return; }
+    if (!AUTH.emailValido(email)) { set('recNotice', 'Escribe un correo válido (ejemplo: nombre@correo.com).', 'error'); return; }
     const btn = document.getElementById('recBtn');
     if (btn) { btn.disabled = true; btn.textContent = 'Procesando…'; }
     let r;
     try { r = await AUTH.solicitarCodigo(email); }
     catch (e) { r = { ok: false, error: 'No se pudo procesar la solicitud. Revisa tu conexión.' }; }
     if (btn) { btn.disabled = false; btn.textContent = 'Generar código de recuperación'; }
-    if (!r.ok) { set('recNotice', '⚠️ ' + r.error, 'error'); return; }
+    if (!r.ok) { set('recNotice', r.error, 'error'); return; }
     if (r.enviado) {
-      // Proveedor de correo real (Firebase): el enlace llega al buzón del usuario.
       document.getElementById('recPaso2').classList.add('hidden');
-      set('recNotice', '✅ ' + r.mensaje, 'success');
+      set('recNotice', r.mensaje, 'success');
       return;
     }
     document.getElementById('recPaso2').classList.remove('hidden');
-    set('recNotice', '🔑 Código de recuperación: <b>' + r.codigo + '</b><br><small>Usa este código para crear tu nueva contraseña.</small>', 'success');
+    set('recNotice', 'Código de recuperación: <b>' + r.codigo + '</b><br><small>Usa este código para crear tu nueva contraseña.</small>', 'success');
   }
 
   async function cambiarConCodigo() {
@@ -103,15 +127,15 @@ const AUTH_UI = (() => {
       document.getElementById('recPass').value,
       document.getElementById('recPass2').value
     );
-    if (!r.ok) { set('recNotice', '⚠️ ' + r.error, 'error'); return; }
-    set('recNotice', '✅ Contraseña actualizada. Ya puedes ingresar.', 'success');
+    if (!r.ok) { set('recNotice', r.error, 'error'); return; }
+    set('recNotice', 'Contraseña actualizada. Ya puedes ingresar.', 'success');
     document.getElementById('recPaso2').classList.add('hidden');
     tab('login');
   }
 
   function google() {
     const r = AUTH.google();
-    set('googleNotice', '⚠️ ' + r.error, 'error');
+    set('googleNotice', r.error, 'error');
   }
 
   function entrarInvitado() {
@@ -119,11 +143,28 @@ const AUTH_UI = (() => {
     entrar(u);
   }
 
+  function limpiarFormularioLogin() {
+    ['aEmail', 'aPass', 'rNombre', 'rEmail', 'rPass', 'rPass2', 'recEmail', 'recCode', 'recPass', 'recPass2'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    ['authNotice', 'regNotice', 'recNotice', 'googleNotice'].forEach(id => set(id, ''));
+    const vb = document.getElementById('viajeBody');
+    if (vb) vb.innerHTML = '';
+    const lt = document.getElementById('lastTripBox');
+    if (lt) lt.classList.add('hidden');
+  }
+
   function salir() {
     AUTH.salir();
     UI.cerrarCuenta();
+    ['cuentaOverlay', 'pickerOverlay', 'origenOverlay', 'cancelOverlay'].forEach(id => UI.ocultar(id));
+    document.body.classList.remove('auth-ok');
     resetTripState();
+    UI.limpiarUIviaje();
+    limpiarFormularioLogin();
     UI.actualizarBadgeUsuario();
+    tab('login');
     UI.goToScreen(0, true);
   }
 
@@ -131,11 +172,17 @@ const AUTH_UI = (() => {
     if (window.confirm && !window.confirm('¿Eliminar tu cuenta y los datos de sesión en este dispositivo? El historial de viajes se conserva.')) return;
     AUTH.eliminarCuenta();
     UI.cerrarCuenta();
+    ['cuentaOverlay', 'pickerOverlay', 'origenOverlay', 'cancelOverlay'].forEach(id => UI.ocultar(id));
+    document.body.classList.remove('auth-ok');
+    resetTripState();
+    UI.limpiarUIviaje();
+    limpiarFormularioLogin();
     UI.actualizarBadgeUsuario();
+    tab('login');
     UI.goToScreen(0, true);
   }
 
-  return { tab, ingresar, registrar, solicitarCodigo, cambiarConCodigo, google, entrarInvitado, salir, borrarCuenta, eliminarCuenta: borrarCuenta, entrar };
+  return { tab, ingresar, registrar, solicitarCodigo, cambiarConCodigo, google, entrarInvitado, salir, borrarCuenta, eliminarCuenta: borrarCuenta, entrar, togglePass };
 })();
 
 /* Las pestañas se atienden por delegación desde el documento: si algo falla

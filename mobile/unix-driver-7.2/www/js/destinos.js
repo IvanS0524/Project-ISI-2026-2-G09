@@ -27,31 +27,15 @@ const esc = s => String(s == null ? '' : s)
 const norm = s => String(s == null ? '' : s).toLowerCase().normalize('NFD')
   .replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
 
-const ICONO_CAT = {
-  'Barrios y sectores': '🏘️',
-  'Restaurantes': '🍽️',
-  'Comercio y supermercados': '🛒',
-  'Educacion': '🎓',
-  'Hoteles y alojamiento': '🏨',
-  'Vias y avenidas': '🛣️',
-  'Servicios y automotriz': '🔧',
-  'Corregimientos e islas': '🏝️',
-  'Corregimientos e islas (ampliado)': '🏝️',
-  'Salud': '🏥',
-  'Turismo y espacios publicos': '🗺️',
-  'Ficha general del distrito': '🏛️',
-  'Transporte y agencias': '🚌',
-  'Division territorial (localidades y UCG)': '📌',
-  'Empresas e industria': '🏭',
-  'Cafeterias y panaderias': '☕',
-  'Estadisticas por categoria': '📊',
-  'Zonas turisticas de referencia': '🧭',
-  'Bares y discotecas': '🍸',
-  'Conjuntos residenciales': '🏢',
-  'Estaciones TransCaribe': '🚏',
-  'Glorietas e intersecciones': '🔀'
-};
-const iconoCat = c => ICONO_CAT[c] || '📍';
+const SVG_PIN_CAT = '<svg class="ico-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg>';
+const iconoCat = () => SVG_PIN_CAT;
+
+function tieneCoordsValidas(d) {
+  if (!d || d.estado === 'no verificado') return false;
+  const lat = Number(d.lat);
+  const lon = Number(d.lon);
+  return d.lat != null && d.lon != null && Number.isFinite(lat) && Number.isFinite(lon) && !(lat === 0 && lon === 0);
+}
 
 /** Carga la base local (script) y sincroniza en segundo plano los 212 barrios oficiales desde AWS S3 (`GET /busquedas/barrios`). */
 async function cargarDestinos() {
@@ -64,8 +48,12 @@ async function cargarDestinos() {
       doc = { destinos: [], frecuentes: [], tarifas: null };
     }
   }
-  DEST.lista = (doc.destinos || []).slice();
-  DEST.lista.forEach(d => { DEST.porId[d.id] = d; });
+  DEST.porId = {};
+  DEST.lista = (doc.destinos || []).filter(tieneCoordsValidas).map(d => {
+    const clean = Object.assign({}, d, { lat: Number(d.lat), lon: Number(d.lon) });
+    DEST.porId[clean.id] = clean;
+    return clean;
+  });
   DEST.frecuentes = (doc.frecuentes || []).map(id => DEST.porId[id]).filter(Boolean);
   if (doc.tarifas) TARIFAS = doc.tarifas;
   DEST.categorias = Array.from(new Set(DEST.lista.map(d => d.categoria)))
@@ -89,15 +77,16 @@ async function sincronizarBarriosDesdeAws() {
       const nombreOficial = b.nombre_oficial || b.nombre;
       const lat = Number(b.coordenada_y != null ? b.coordenada_y : b.lat);
       const lon = Number(b.coordenada_x != null ? b.coordenada_x : b.lon);
-      if (!nombreOficial || !isFinite(lat) || !isFinite(lon)) return;
+      if (!nombreOficial || !Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0)) return;
 
       const claveNorm = norm(nombreOficial);
       const existente = DEST.lista.find(d => (d.nombre_norm || norm(d.nombre)) === claveNorm);
       if (existente) {
-        if (existente.lat == null || existente.lon == null) {
+        if (!tieneCoordsValidas(existente)) {
           existente.lat = lat;
           existente.lon = lon;
         }
+        if (b.localidad && !existente.localidad) existente.localidad = b.localidad;
       } else {
         const idBarrio = 'aws-barrio-' + (b.codigo || (idx + 1));
         const item = {
@@ -106,12 +95,13 @@ async function sincronizarBarriosDesdeAws() {
           nombre_norm: claveNorm,
           barrio: nombreOficial,
           barrio_norm: claveNorm,
-          categoria: 'Barrios y sectores',
-          cat_norm: norm('Barrios y sectores'),
+          localidad: b.localidad || 'Cartagena',
+          categoria: 'Barrios de Cartagena',
+          cat_norm: 'barrios de cartagena',
           zona: 'medio',
           lat,
           lon,
-          estado: 'verificado_aws_s3'
+          verificado: true
         };
         DEST.lista.push(item);
         DEST.porId[idBarrio] = item;
@@ -121,18 +111,25 @@ async function sincronizarBarriosDesdeAws() {
     if (agregados > 0) {
       DEST.categorias = Array.from(new Set(DEST.lista.map(d => d.categoria)))
         .sort((a, b) => DEST.lista.filter(x => x.categoria === b).length - DEST.lista.filter(x => x.categoria === a).length);
+      const sub = document.getElementById('destinoSub');
+      if (sub) sub.textContent = DEST.lista.length + ' lugares · barrios y sitios clave de Cartagena';
+      const overlay = document.getElementById('pickerOverlay');
+      if (overlay && !overlay.classList.contains('hidden')) {
+        PICKER.renderCats();
+        PICKER.filtrar();
+      }
     }
   } catch (_) {}
 }
 
 function destinoPorId(id) { return DEST.porId[id] || null; }
 
-/** Busca por texto y categoría. Devuelve los mejores resultados primero. */
+/** Busca por texto y categoría. Devuelve únicamente lugares con coordenadas válidas, mejores resultados primero. */
 function buscarDestinos(texto, categoria, limite) {
   const t = norm(texto);
   const cat = categoria && categoria !== 'todas' ? categoria : null;
-  const tope = limite || 120;
-  let base = DEST.lista;
+  const tope = (limite != null && limite > 0) ? limite : DEST.lista.length;
+  let base = DEST.lista.filter(tieneCoordsValidas);
   if (cat) base = base.filter(d => d.categoria === cat);
 
   if (!t) {
@@ -176,15 +173,17 @@ const PICKER = (() => {
   }
   function cerrar() {
     UI.ocultar('pickerOverlay');
+    UI.ocultar('destinosOverlay');
     if (abiertoAntes && abiertoAntes.blur) abiertoAntes.blur();
   }
   function renderCats() {
     const cont = document.getElementById('pickerCats');
     if (!cont) return;
-    const total = DEST.lista.length;
-    const chips = [`<button class="chip ${DEST.filtro === 'todas' ? 'active' : ''}" onclick="PICKER.setFiltro('todas')">Todas (${total})</button>`];
+    const validos = DEST.lista.filter(tieneCoordsValidas);
+    const chips = [`<button class="chip ${DEST.filtro === 'todas' ? 'active' : ''}" onclick="PICKER.setFiltro('todas')">Todas (${validos.length})</button>`];
     DEST.categorias.forEach(c => {
-      const n = DEST.lista.filter(d => d.categoria === c).length;
+      const n = validos.filter(d => d.categoria === c).length;
+      if (!n) return;
       chips.push(`<button type="button" class="chip ${DEST.filtro === c ? 'active' : ''}" data-cat="${esc(c)}">${iconoCat(c)} ${esc(c)} (${n})</button>`);
     });
     cont.innerHTML = chips.join('');
@@ -202,25 +201,23 @@ const PICKER = (() => {
   function filtrar() {
     const inp = document.getElementById('pickerInput');
     DEST.texto = inp ? inp.value : '';
-    const lista = buscarDestinos(DEST.texto, DEST.filtro, 150);
+    const lista = buscarDestinos(DEST.texto, DEST.filtro, 0);
     const cont = document.getElementById('pickerList');
     const cnt = document.getElementById('pickerCount');
-    if (cnt) cnt.textContent = lista.length + (lista.length === 150 ? '+' : '') + ' lugares';
+    if (cnt) cnt.textContent = lista.length + (lista.length === 1 ? ' lugar' : ' lugares');
 
     if (!lista.length) {
       cont.innerHTML = `<div class="picker-empty">No encontramos "${(DEST.texto || '').replace(/[<>]/g, '')}".<br>Prueba con otro nombre, un barrio o una categoría.</div>`;
       return;
     }
     cont.innerHTML = lista.map(d => {
-      const sub = [d.categoria, d.barrio && d.barrio !== d.nombre ? d.barrio : null]
+      const sub = [d.categoria, d.localidad || (d.barrio && d.barrio !== d.nombre ? d.barrio : null)]
         .filter(Boolean).join(' · ');
-      const aviso = d.estado === 'aproximado' ? ' · ubicación aproximada'
-        : (d.estado === 'no verificado' ? ' · sin ubicación verificada' : '');
       return `<div class="picker-item" role="button" tabindex="0" data-id="${esc(d.id)}">
         <div class="pi-ico">${iconoCat(d.categoria)}</div>
         <div class="pi-main">
           <b>${esc(d.nombre)}</b>
-          <span>${esc(sub + aviso)}</span>
+          <span>${esc(sub)}</span>
         </div>
         <div class="pi-price">Elegir</div>
       </div>`;
@@ -228,8 +225,7 @@ const PICKER = (() => {
     delegar(cont);
   }
 
-  /* Un solo listener por contenedor: cualquier comercio, supermercado o
-     dirección se puede tocar aunque se repinte la lista. */
+  /* Un solo listener por contenedor: cualquier lugar o botón "Elegir" se selecciona al instante. */
   function delegar(cont) {
     if (!cont || cont.dataset.delegado === '1') return;
     cont.dataset.delegado = '1';
@@ -250,9 +246,16 @@ const PICKER = (() => {
   }
 
   function elegir(id) {
-    const d = destinoPorId(id);
-    if (!d) { UI.setNotice('searchNotice', 'No se pudo leer ese lugar del catálogo. Prueba con otro.', 'error'); return; }
-    FLOW.elegirDestino(d);
+    let d = destinoPorId(id);
+    if (!d && id) {
+      const encontrados = buscarDestinos(String(id), 'todas', 10);
+      d = encontrados.find(tieneCoordsValidas) || null;
+    }
+    if (!d || !tieneCoordsValidas(d)) {
+      UI.setNotice('searchNotice', 'No se pudo leer ese lugar del catálogo. Prueba con otro.', 'error');
+      return;
+    }
+    FLOW.elegirDestino(Object.assign({}, d, { lat: Number(d.lat), lon: Number(d.lon) }));
     cerrar();
     const btn = document.getElementById('btnBuscar');
     if (btn && btn.scrollIntoView) { try { btn.scrollIntoView({ block: 'nearest' }); } catch (_) {} }
