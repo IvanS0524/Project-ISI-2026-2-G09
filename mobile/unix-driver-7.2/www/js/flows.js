@@ -33,6 +33,43 @@ const FLOW = (() => {
   const setText = (id, v) => { const e = $(id); if (e) e.textContent = v; };
   const nombreOrigen = () => (trip && trip.origen ? trip.origen.nombre : 'Origen');
   const nombreDestino = () => (trip && trip.destino ? trip.destino.nombre : 'Destino');
+  const SVG_SEARCH_ICON = '<svg class="ico-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.2" y2="16.2"/></svg>';
+  const SVG_STAR_SM = '<svg class="ico-svg" viewBox="0 0 24 24" width="13" height="13" fill="#F59E0B" stroke="#F59E0B" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+  const SVG_CAR_ROAD = '<svg class="ico-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14v-5l-2-5H7l-2 5v5z"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/></svg>';
+  const SVG_MOTO_ROAD = '<svg class="ico-svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3"/><circle cx="18.5" cy="17.5" r="3"/><path d="M15 6h3l2 5h-5l-3-5H8l-2 5h9"/></svg>';
+  const REGEX_CARRO = /\b(renault|logan|sandero|kwid|stepway|chevrolet|spark|onix|sail|beat|aveo|kia|picanto|rio|soluto|toyota|corolla|hilux|yaris|mazda|nissan|versa|march|hyundai|i10|i20|accent|tucson|swift|celerio|dzire|volkswagen|gol|virtus|jetta|ford|fiesta|chery|byd|autom[oó]vil|carro|sed[aá]n|suv|camioneta)\b/i;
+  const REGEX_MOTO = /\b(moto|motocicleta|tvs|raider|boxer|bajaj|pulsar|discover|platino|honda\s+cb|cb\s?125|xr\s?150|nkd|akt|yamaha|fz|sz|nmax|crypton|libero|gixxer|gn\s?125|hero|eco|victory|apache|auteco|kymco|benelli|ktm|dominar|scooter)\b/i;
+
+  function resolverModeloCoherente(vehObj, tipoSel, seed = 0) {
+    const esCarro = tipoSel === 'carro';
+    const raw = vehObj
+      ? (typeof vehObj === 'string' ? vehObj.trim() : `${vehObj.marca || ''} ${vehObj.modelo || ''}`.trim())
+      : '';
+    const tipoObj = (vehObj && typeof vehObj === 'object' && vehObj.tipo) ? String(vehObj.tipo).toLowerCase() : '';
+    const idx = Math.abs(Number(seed) || 0);
+
+    if (esCarro) {
+      if (tipoObj.includes('moto') || (!tipoObj.includes('carro') && REGEX_MOTO.test(raw) && !REGEX_CARRO.test(raw))) {
+        return VEH_CARRO[idx % VEH_CARRO.length];
+      }
+      return raw || VEH_CARRO[idx % VEH_CARRO.length];
+    }
+
+    if (tipoObj.includes('carro') || tipoObj.includes('auto') || tipoObj.includes('sedan') || REGEX_CARRO.test(raw) || (raw && !REGEX_MOTO.test(raw))) {
+      return VEH_MOTO[idx % VEH_MOTO.length];
+    }
+    return raw || VEH_MOTO[idx % VEH_MOTO.length];
+  }
+
+  function textoPorcentajeComision() {
+    const pct = (typeof comisionActivaPct === 'number' && isFinite(comisionActivaPct)) ? comisionActivaPct : COMISION_PCT;
+    return (pct * 100).toFixed(1).replace(/\.0$/, '');
+  }
+  const setBtnBuscar = (btn, disabled, label = 'Buscar opciones') => {
+    if (!btn) return;
+    btn.disabled = !!disabled;
+    btn.innerHTML = `${SVG_SEARCH_ICON}<span>${label}</span>`;
+  };
 
   /* Sincroniza el porcentaje de comisión vigente en AWS RDS (GET /comisiones/configuracion/activa) */
   async function sincronizarComisionVigente() {
@@ -42,6 +79,7 @@ const FLOW = (() => {
       const pct = Number(cfg && cfg.porcentaje);
       if (isFinite(pct) && pct >= 0 && pct <= 100) {
         comisionActivaPct = pct / 100;
+        setText('commissionLabel', 'Comisión UniX Driver (' + textoPorcentajeComision() + '%)');
       }
     } catch (_) { }
   }
@@ -76,10 +114,17 @@ const FLOW = (() => {
   }
 
   /* ============ 1. Origen y destino ============ */
+  function coordsValidas(p) {
+    if (!p) return false;
+    const lat = Number(p.lat);
+    const lon = Number(p.lon);
+    return p.lat != null && p.lon != null && Number.isFinite(lat) && Number.isFinite(lon) && !(lat === 0 && lon === 0);
+  }
+
   function elegirOrigen(o) {
     if (!trip || !o) return;
-    if (o.lat == null || o.lon == null) {
-      UI.setNotice('searchNotice', 'Ese origen no tiene coordenadas. Elige otro punto.', 'error');
+    if (!coordsValidas(o)) {
+      UI.setNotice('searchNotice', 'No se encontraron coordenadas válidas para ese origen. Elige otro punto.', 'error');
       return;
     }
     trip.origen = {
@@ -98,12 +143,16 @@ const FLOW = (() => {
 
   function elegirDestino(d) {
     if (!trip || !d) return;
-    if (d.lat == null || d.lon == null) {
-      UI.setNotice('searchNotice', '⚠️ «' + d.nombre + '» todavía no tiene ubicación verificada, así que no se puede calcular la ruta. Elige otro destino.', 'error');
+    if (!coordsValidas(d)) {
+      UI.setNotice('searchNotice', 'No se encontraron coordenadas válidas para «' + (d.nombre || 'ese destino') + '». Elige otro destino.', 'error');
       return;
     }
-    trip.destino = d;
-    setText('destinoLabel', d.nombre);
+    trip.destino = Object.assign({}, d, { lat: Number(d.lat), lon: Number(d.lon) });
+    const dl = $('destinoLabel');
+    if (dl) {
+      dl.textContent = d.nombre;
+      dl.classList.remove('is-placeholder');
+    }
     setText('resDestino', d.nombre);
     setText('destinoSub', [d.categoria, d.barrio && d.barrio !== d.nombre ? d.barrio : null]
       .filter(Boolean).join(' · '));
@@ -172,7 +221,7 @@ const FLOW = (() => {
       chip.classList.remove('hidden');
       if (precio) precio.textContent = '—';
       trip.tarifa = 0; trip.tarifaOk = false;
-      if (btn) { btn.disabled = true; btn.textContent = '🔍 Buscar conductor'; }
+      setBtnBuscar(btn, true, 'Buscar opciones');
     };
 
     if (!trip.origen || !trip.destino) {
@@ -180,7 +229,7 @@ const FLOW = (() => {
       chip.textContent = '';
       if (precio) precio.textContent = '—';
       trip.tarifa = 0; trip.tarifaOk = false;
-      if (btn) { btn.disabled = true; btn.textContent = '🔍 Buscar conductor'; }
+      setBtnBuscar(btn, true, 'Buscar opciones');
       return;
     }
 
@@ -203,12 +252,12 @@ const FLOW = (() => {
     trip.tarifa = r.precio;
     trip.tarifaOk = true;
     trip.tarifaDetalle = r.detalle;
-    trip.comision = Math.round(r.precio * COMISION_PCT);
+    trip.comision = Math.round(r.precio * comisionActivaPct);
     chip.className = 'zone-chip';
     chip.classList.remove('hidden');
     chip.textContent = vehLabel(trip.vehiculo) + ' · ' + money(r.precio);
     if (precio) precio.textContent = money(r.precio);
-    if (btn) { btn.disabled = false; btn.textContent = '🔍 Buscar conductor'; }
+    setBtnBuscar(btn, false, 'Buscar opciones');
   }
 
   /* ============ 3. Buscar conductores (Conectado a POST /busquedas/ en AWS) ============ */
@@ -232,7 +281,7 @@ const FLOW = (() => {
     UI.setNotice('searchNotice', '');
     trip.estado = ESTADOS.BUSCANDO;
     const btn = $('btnBuscar');
-    if (btn) { btn.disabled = true; btn.textContent = 'Buscando…'; }
+    setBtnBuscar(btn, true, 'Buscando…');
     setText('ofertasSub', 'Comparando tarifas para ' + nombreOrigen() + ' → ' + nombreDestino());
     const off = $('offers');
     if (off) { off.innerHTML = ''; off.classList.add('hidden'); }
@@ -285,16 +334,14 @@ const FLOW = (() => {
 
       if (data && Array.isArray(data.ofertas) && data.ofertas.length > 0) {
         trip.id_busqueda = data.id_busqueda;
-        ofertasCargadas = data.ofertas.map(of => {
+        ofertasCargadas = data.ofertas.map((of, idx) => {
           const nombrePlat = (of.plataforma && of.plataforma.nombre) ? of.plataforma.nombre : 'Uber';
           const platId = nombrePlat.toLowerCase().includes('didi')
             ? 'didi'
             : (nombrePlat.toLowerCase().includes('indrive') ? 'indrive' : 'uber');
           const precioApi = Number(of.precio_estimado) || trip.tarifa;
           const precioAjustado = esMoto ? Math.max(5000, r2(precioApi * 0.45)) : r2(precioApi);
-          const vehTexto = of.vehiculo
-            ? `${of.vehiculo.marca} ${of.vehiculo.modelo}`.trim()
-            : 'Vehículo asignado';
+          const vehTexto = resolverModeloCoherente(of.vehiculo, trip.vehiculo, (of.id_oferta || 0) + idx);
 
           return {
             id_oferta: of.id_oferta,
@@ -328,14 +375,11 @@ const FLOW = (() => {
         cont.classList.add('hidden');
         cont.innerHTML = '';
       }
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = '🔍 Buscar conductor';
-      }
+      setBtnBuscar(btn, false, 'Buscar opciones');
       trip.estado = ESTADOS.INICIAL;
       UI.setNotice(
         'offersNotice',
-        '❌ No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.',
+        'No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.',
         'error'
       );
       return;
@@ -351,9 +395,9 @@ const FLOW = (() => {
       <div class="offer ${o === mejor ? 'recommended' : ''}" onclick="FLOW.seleccionarOferta(${i})">
         <div class="offer-left">
           <div class="p-badge ${o.plataformaId}"><img src="img/${o.plataformaId}.png" alt="${o.plataforma}"></div>
-          <div>
+          <div class="offer-info">
             <div class="offer-title">${o.plataforma} · ${o.conductor}</div>
-            <div class="offer-meta">${o.vehiculo} · ${o.placa} · ⭐ ${o.rating} · llega en ${o.etaMin} min</div>
+            <div class="offer-meta">${vehLabel(trip.vehiculo)} · ${o.vehiculo} · ${o.placa} · ${SVG_STAR_SM} ${o.rating} · llega en ${o.etaMin} min</div>
           </div>
         </div>
         <div class="offer-right">
@@ -361,8 +405,8 @@ const FLOW = (() => {
           ${o === mejor ? '<span class="recommend">RECOMENDADA</span>' : ''}
         </div>
       </div>`).join('');
-    UI.setNotice('offersNotice', '✅ ' + trip.ofertas.length + ' ofertas disponibles para ' + kmTexto(trip.rutaKm) + '. Toca una para continuar.', 'success');
-    if (btn) { btn.disabled = false; btn.textContent = '🔍 Buscar conductor'; }
+    UI.setNotice('offersNotice', trip.ofertas.length + ' ofertas disponibles para ' + kmTexto(trip.rutaKm) + '. Toca una para continuar.', 'success');
+    setBtnBuscar(btn, false, 'Buscar opciones');
   }
 
   /* ============ 4. Conductor asignado (Conectado a POST /viajes/solicitar) ============ */
@@ -372,7 +416,7 @@ const FLOW = (() => {
     if (!o || !o.id_oferta) {
       UI.setNotice(
         'offersNotice',
-        '❌ La oferta seleccionada ya no está disponible. Realiza una nueva búsqueda.',
+        'La oferta seleccionada ya no está disponible. Realiza una nueva búsqueda.',
         'error'
       );
       return;
@@ -403,12 +447,13 @@ const FLOW = (() => {
     if (!idViajeReal) {
       UI.setNotice(
         'offersNotice',
-        '❌ No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.',
+        'No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.',
         'error'
       );
       return;
     }
 
+    o.vehiculo = resolverModeloCoherente(o.vehiculo, trip.vehiculo, o.id_oferta || i);
     trip.oferta = o;
     trip.tarifa = o.precio;
     trip.comision = Math.round(o.precio * comisionActivaPct);
@@ -417,8 +462,8 @@ const FLOW = (() => {
     trip.estado = ESTADOS.ASIGNADO;
 
     setText('aNombre', o.conductor);
-    setText('aRating', '⭐ ' + o.rating);
-    setText('aVehiculo', (trip.vehiculo === 'carro' ? '🚗 ' : '🏍️ ') + o.vehiculo);
+    setText('aRating', o.rating + ' / 5.0');
+    setText('aVehiculo', vehLabel(trip.vehiculo) + ' · ' + o.vehiculo);
     setText('aPlaca', o.placa);
     setText('aPlataforma', o.plataforma);
     setText('aDestino', nombreOrigen() + ' → ' + nombreDestino() + ' · ' + kmTexto(trip.rutaKm));
@@ -436,7 +481,7 @@ const FLOW = (() => {
 
     const o = trip.oferta;
     setText('cNombre', o.conductor);
-    setText('cVehiculo', (trip.vehiculo === 'carro' ? '🚗 ' : '🏍️ ') + o.vehiculo);
+    setText('cVehiculo', (trip.vehiculo === 'carro' ? 'Carro · ' : 'Moto · ') + o.vehiculo);
     setText('cPlaca', o.placa);
     setText('cEstado', 'Llegará a ' + (trip.origen.direccion || nombreOrigen()) + ' en ' + o.etaMin + ' min');
     UI.goToScreen(4);
@@ -466,7 +511,7 @@ const FLOW = (() => {
     limpiarTimers();
     const o = trip.oferta;
     setText('lNombre', o.conductor);
-    setText('lVehiculo', (trip.vehiculo === 'carro' ? '🚗 ' : '🏍️ ') + o.vehiculo);
+    setText('lVehiculo', (trip.vehiculo === 'carro' ? 'Carro · ' : 'Moto · ') + o.vehiculo);
     setText('lPlaca', o.placa);
     setText('lDestino', nombreDestino());
     setText('lPrecio', money(trip.tarifa));
@@ -485,7 +530,7 @@ const FLOW = (() => {
 
     setText('tDestino', nombreOrigen() + ' → ' + nombreDestino());
     setText('tConductor', trip.oferta.conductor);
-    setText('tVehiculo', (trip.vehiculo === 'carro' ? '🚗 ' : '🏍️ ') + trip.oferta.vehiculo + ' · ' + trip.oferta.placa);
+    setText('tVehiculo', (trip.vehiculo === 'carro' ? 'Carro · ' : 'Moto · ') + trip.oferta.vehiculo + ' · ' + trip.oferta.placa);
     const kmRuta = Number(trip.rutaKm || 0);
     const dur = Math.max(12, Math.min(30, Math.round(kmRuta * 2) || 12));
     setText('tEta', (trip.rutaMin ? trip.rutaMin + ' min por carretera' : Math.round(kmRuta / 0.32) + ' min aprox.'));
@@ -494,7 +539,7 @@ const FLOW = (() => {
     }
     setText('tEstado', 'Recorrido en progreso…');
     const ve = $('vehicleEmoji');
-    if (ve) ve.textContent = vehEmoji(trip.vehiculo);
+    if (ve) ve.innerHTML = trip.vehiculo === 'carro' ? SVG_CAR_ROAD : SVG_MOTO_ROAD;
     const road = $('road');
     if (road) road.classList.add('running');
     UI.goToScreen(6);
@@ -522,10 +567,13 @@ const FLOW = (() => {
     const tarifa = trip.tarifa;
     if (trip.id_viaje) actualizarEstadoViajeBackend(trip.id_viaje, 'COMPLETADO', tarifa);
 
-    const comision = Math.round(tarifa * comisionActivaPct);
+    const pctAplicado = (typeof comisionActivaPct === 'number' && isFinite(comisionActivaPct)) ? comisionActivaPct : COMISION_PCT;
+    const comision = Math.round(tarifa * pctAplicado);
+    const pctTexto = (pctAplicado * 100).toFixed(1).replace(/\.0$/, '');
     setText('fareBig', money(tarifa));
     setText('fareRoute', nombreOrigen() + ' → ' + nombreDestino() + ' · ' + kmTexto(trip.rutaKm));
     setText('fare', money(tarifa));
+    setText('commissionLabel', 'Comisión UniX Driver (' + pctTexto + '%)');
     setText('commission', '-' + money(comision));
     setText('net', money(tarifa - comision));
     UI.setNotice('paymentNotice', '');
@@ -536,7 +584,9 @@ const FLOW = (() => {
     if (!trip || trip.estado !== ESTADOS.COMPLETADO) return;
     const metodo = ($('metodoPago') || {}).value || 'tarjeta';
     const tarifa = trip.tarifa;
-    const comision = Math.round(tarifa * comisionActivaPct);
+    const pctAplicado = (typeof comisionActivaPct === 'number' && isFinite(comisionActivaPct)) ? comisionActivaPct : COMISION_PCT;
+    const comision = Math.round(tarifa * pctAplicado);
+    const pctTexto = textoPorcentajeComision();
     const recibo = 'REC-' + Date.now().toString(36).toUpperCase().slice(-6);
     trip.pago = { metodo, monto: tarifa, comision, neto: tarifa - comision, folio: recibo };
     trip.estado = 'pagado';
@@ -577,8 +627,8 @@ const FLOW = (() => {
         <div class="row"><span class="label">Vehículo</span><span class="value">${vehLabel(trip.vehiculo)} · ${trip.oferta.vehiculo} · ${trip.oferta.placa}</span></div>
         <div class="row"><span class="label">Plataforma</span><span class="value">${trip.oferta.plataforma}</span></div>
         <div class="row"><span class="label">Método de pago</span><span class="value">${metodo}</span></div>
-        <div class="row"><span class="label">Tarifa</span><span class="value">${money(tarifa)}</span></div>
-        <div class="row"><span class="label">Comisión UniX</span><span class="value">${money(comision)}</span></div>
+        <div class="row row-total"><span class="label">Tarifa</span><span class="value">${money(tarifa)}</span></div>
+        <div class="row"><span class="label">Comisión UniX (${pctTexto}%)</span><span class="value">${money(comision)}</span></div>
         <div class="row"><span class="label">Neto conductor</span><span class="value">${money(tarifa - comision)}</span></div>`;
     }
     UI.goToScreen(8);
@@ -679,7 +729,7 @@ const FLOW = (() => {
     UI.ocultar('cancelOverlay');
     resetTripState();   // origen, destino, km y precio vuelven a cero
     UI.goToScreen(1);
-    UI.setNotice('searchNotice', '✅ Viaje cancelado. Puedes elegir un nuevo origen y destino.', 'success');
+    UI.setNotice('searchNotice', 'Viaje cancelado. Puedes elegir un nuevo origen y destino.', 'success');
   }
 
   return {

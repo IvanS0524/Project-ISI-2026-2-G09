@@ -71,7 +71,7 @@ w.fetch = async (url, opts = {}) => {
   return { ok: true, status: 200, json: async () => ({}) };
 };
 w.navigator.geolocation = { getCurrentPosition: (ok) => ok({ coords: { latitude: 10.42, longitude: -75.54 } }) };
-for (const f of ['config/api-env.js','config/firebase-config.js','config/tarifas.js','js/config-tarifas.js','js/storage.js','js/apiService.js','js/auth.js',
+for (const f of ['config/api-env.js','config/tarifas.js','js/storage.js','js/apiService.js','js/auth.js',
   'js/mapa.js','data/destinos.js','js/state.js','js/destinos.js','js/origen.js','js/ui.js','js/flows.js','js/viaje.js','js/boot.js']) {
   if (!fs.existsSync(www + '/' + f)) continue;
   const c = d.createElement('script'); c.textContent = fs.readFileSync(www + '/' + f, 'utf8'); d.body.appendChild(c);
@@ -113,7 +113,7 @@ const mainTxt = $('screen1').textContent;
 t('sin "Distancia estimada"', !/Distancia estimada|distancia estimada/i.test(mainTxt));
 t('sin contenedor resKm', !$('resKm') && !/resKm/.test(fs.readFileSync(www + '/index.html','utf8')));
 t('sin precioNota', !$('precioNota'));
-const uiTxt = [...d.querySelectorAll('#screen0,#screen1,#screen2,#screen3,#screen4,#screen5,#screen6,#screen7,#screen8,#screen10,#screen11,.bottom-nav,#pickerOverlay,#origenOverlay')]
+const uiTxt = [...d.querySelectorAll('#screen0,#screen1,#screen2,#screen3,#screen4,#screen5,#screen6,#screen7,#screen8,#screen10,#screen11,#screen13,.bottom-nav,#pickerOverlay,#origenOverlay')]
   .map(e => e.textContent).join(' ');
 t('sin nota de fórmula en la interfaz', !/precio por km|primer km \+|km redondeado|precio = /i.test(uiTxt), uiTxt.match(/precio por km|primer km \+|km redondeado/i)?.[0] || 'limpio');
 t('precio estimado visible', !!$('precioEstimado'));
@@ -150,16 +150,38 @@ $('recEmail').value = 'ana@correo.com'; click($('recBtn')); await new Promise(r 
 const cod = (($('recNotice').textContent.match(/\d{6}/) || [])[0]) || '';
 t('solicitud de recuperación procesada (código local)', cod.length === 6 && !$('recPaso2').classList.contains('hidden'), 'cod=' + cod);
 $('recCode').value = cod; $('recPass').value = 'nueva123'; $('recPass2').value = 'nueva123';
-click([...d.querySelectorAll('#recPaso2 button')].find(b => /Cambiar contraseña/.test(b.textContent)));
+click([...d.querySelectorAll('#recPaso2 button')].find(b => /Cambiar\s+contraseña/.test(b.textContent)));
 await new Promise(r => setTimeout(r, 200));
 t('cambio de contraseña OK', /actualizada/i.test($('recNotice').textContent), $('recNotice').textContent.trim().slice(0,50));
 $('aEmail').value = 'ana@correo.com'; $('aPass').value = 'nueva123'; click($('authBtn'));
 await new Promise(r => setTimeout(r, 200));
 t('ingreso con la nueva contraseña', $('screen1').classList.contains('active'));
-t('Firebase no configurado se informa sin simular', w.eval('AUTH.nubeActiva') === false);
+t('Backend AWS activo en AUTH', w.eval('AUTH.awsActivo') === true);
 
 console.log('\n===== 4. COMERCIOS COMO ORIGEN Y DESTINO =====');
 const doc = JSON.parse(fs.readFileSync(www + '/data/destinos.json', 'utf8'));
+t('catálogo 100% con coordenadas válidas y >=212 barrios oficiales',
+  doc.destinos.filter(x => x.categoria === 'Barrios de Cartagena').length === 212 &&
+  doc.destinos.every(x => x.lat != null && x.lon != null && Number.isFinite(Number(x.lat)) && Number.isFinite(Number(x.lon))));
+w.eval('PICKER.abrir()'); await new Promise(r => setTimeout(r, 20));
+t('pickerCount muestra el total real verificado sin "150+"',
+  $('pickerCount').textContent === doc.destinos.length + ' lugares' &&
+  $('pickerCats').textContent.includes('Todas (' + doc.destinos.length + ')') &&
+  !/sin ubicación verificada/i.test($('pickerList').textContent),
+  $('pickerCount').textContent);
+$('pickerInput').value = 'alameda'; w.eval('PICKER.filtrar()');
+const itAlameda = d.querySelector('#pickerList .picker-item');
+if (itAlameda) { click(itAlameda.querySelector('.pi-price') || itAlameda); await new Promise(r => setTimeout(r, 250)); }
+t('clic en "Elegir" de barrio oficial selecciona destino al instante',
+  !!itAlameda && /Alameda/i.test($('destinoLabel').textContent) && $('pickerOverlay').classList.contains('hidden'),
+  $('destinoLabel').textContent);
+w.eval('ORIGEN_UI.abrir()'); await new Promise(r => setTimeout(r, 20));
+$('origenInput').value = 'alameda'; w.eval("ORIGEN_UI.pintarSugerencias('alameda')");
+const itOri = d.querySelector('#origenList .origen-item');
+if (itOri) { click(itOri.querySelector('.origen-choose') || itOri); await new Promise(r => setTimeout(r, 250)); }
+t('clic en "Elegir" de origen selecciona barrio y cierra modal',
+  !!itOri && /Alameda/i.test($('origenLabel').textContent) && $('origenOverlay').classList.contains('hidden'),
+  $('origenLabel').textContent);
 const buscar = re => doc.destinos.find(x => re.test(x.nombre) && /Comercio|Restaurante|Cafeter|Bares/i.test(x.categoria));
 const elegirDestino = async (nombre) => {
   w.eval('PICKER.abrir()'); await new Promise(r => setTimeout(r, 20));

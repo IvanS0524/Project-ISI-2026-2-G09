@@ -10,7 +10,7 @@
 
 const CFG_TAR = () => (window.UNIX_CONFIG && UNIX_CONFIG.tarifas) || {};
 const ORIGEN_SUGERIDO = (window.UNIX_CONFIG && UNIX_CONFIG.origenSugerido) ||
-  { nombre: 'Universidad de Cartagena · Piedra de Bolívar', lat: 10.401904, lon: -75.508695 };
+  { nombre: 'Universidad de Cartagena', barrio: 'Zaragocilla', direccion: 'Campus Piedra de Bolívar', lat: 10.401904, lon: -75.508695 };
 
 const COMISION_PCT = 0.10;
 const LS_HIST = 'unixdriver.historial.v2';
@@ -48,7 +48,14 @@ function nuevoTrip() {
     requestId: seqSolicitud,
     estado: ESTADOS.INICIAL,
     vehiculo: 'moto',
-    origen: null,          // { nombre, direccion, lat, lon, fuente }
+    origen: {
+      nombre: ORIGEN_SUGERIDO.nombre || 'Universidad de Cartagena',
+      barrio: ORIGEN_SUGERIDO.barrio || 'Universidad de Cartagena',
+      direccion: ORIGEN_SUGERIDO.direccion || '',
+      lat: Number(ORIGEN_SUGERIDO.lat || 10.401904),
+      lon: Number(ORIGEN_SUGERIDO.lon || -75.508695),
+      fuente: 'sugerido'
+    },
     destino: null,
     rutaKm: null,          // km por carretera (solo si el proveedor respondió)
     rutaMin: null,
@@ -143,8 +150,8 @@ async function hidratarPersistencia() {
 
 /* --- Dinero y formato --- */
 const money = n => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(Number(n) || 0);
-const vehLabel = v => (v === 'carro' ? '🚗 Carro' : '🏍️ Moto');
-const vehEmoji = v => (v === 'carro' ? '🚗' : '🏍️');
+const vehLabel = v => (v === 'carro' ? 'Carro' : 'Moto');
+const vehEmoji = v => (v === 'carro' ? 'Carro' : 'Moto');
 const ahoraTexto = () => new Date().toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 const kmTexto = n => (n == null ? '—' : String(Number(n)).replace('.', ',') + ' km');
 

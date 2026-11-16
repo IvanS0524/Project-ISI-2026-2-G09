@@ -34,6 +34,9 @@ const VIAJE = (() => {
     } catch (_) { return null; }
   }
 
+  const SVG_STAR = '<svg class="ico-svg" viewBox="0 0 24 24" width="13" height="13" fill="#F59E0B" stroke="#F59E0B" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+  const SVG_COMPASS = '<svg class="ico-svg" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#0B46C4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>';
+
   /* ---------- Tarjetas reutilizables ---------- */
   function bloqueConductor(o, veh) {
     if (!o) return '';
@@ -42,8 +45,8 @@ const VIAJE = (() => {
       <div class="vj-avatar">${esc(ini)}</div>
       <div class="vj-driver-txt">
         <b>${esc(o.conductor)}</b>
-        <span>⭐ ${esc(o.rating)} · ${esc(o.plataforma || '')}</span>
-        <span>${veh === 'carro' ? '🚗' : '🏍️'} ${esc(o.vehiculo)} · ${esc(o.placa)}</span>
+        <span>${SVG_STAR} ${esc(o.rating)} · ${esc(o.plataforma || '')}</span>
+        <span>${veh === 'carro' ? 'Carro' : 'Moto'} · ${esc(o.vehiculo)} · ${esc(o.placa)}</span>
       </div>
     </div>`;
   }
@@ -72,15 +75,16 @@ const VIAJE = (() => {
   }
 
   function sinViaje() {
-    const fin = ultimoFinalizado();
-    const ultimo = fin ? `<div class="vj-card vj-ultimo">
+    const s = (typeof AUTH !== 'undefined' && AUTH.sesion) ? AUTH.sesion() : null;
+    const fin = (s && (s.email || s.invitado || s.nombre)) ? ultimoFinalizado() : null;
+    const ultimo = fin ? `<div id="lastTripBox" class="vj-card vj-ultimo">
         <small>ÚLTIMO VIAJE · ${esc(fin.fecha || '')}</small>
         <div class="vj-row"><span>Destino</span><b>${esc(fin.destino || '—')}</b></div>
         <div class="vj-row"><span>Distancia</span><b>${fin.km != null ? kmTexto(fin.km) : '—'}</b></div>
         <div class="vj-row"><span>Precio</span><b>${money(fin.tarifa)}</b></div>
       </div>` : '';
     return `<div class="vj-empty">
-        <div class="vj-empty-ico">🧭</div>
+        <div class="vj-empty-ico">${SVG_COMPASS}</div>
         <h2>No tienes ningún viaje activo</h2>
         <p>Cuando solicites un conductor verás aquí el estado del servicio.</p>
         <button class="btn btn-primary btn-block" onclick="UI.goToScreen(1)">Volver al inicio para solicitar viaje</button>
@@ -110,7 +114,7 @@ const VIAJE = (() => {
     if (e === 'conductor_ha_llegado') {
       extra = bloqueConductor(o, trip.vehiculo) +
         `<div class="vj-card"><div class="vj-row"><span>Estado</span><b>El conductor está en el punto de recogida</b></div></div>
-        <button class="btn btn-primary btn-block" onclick="FLOW.iniciarViaje()">▶ Iniciar viaje</button>
+        <button class="btn btn-primary btn-block" onclick="FLOW.iniciarViaje()">Iniciar viaje</button>
         <button class="btn btn-danger btn-block btn-sm" style="margin-top:8px;" onclick="FLOW.abrirCancelacion()">Cancelar viaje</button>`;
     }
     if (e === 'viaje_iniciado') {

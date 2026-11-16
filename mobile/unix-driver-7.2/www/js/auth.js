@@ -99,7 +99,7 @@ const AUTH = (() => {
     });
 
     if (api.redError || !api.status) {
-      return { ok: false, code: 'NETWORK_ERROR', error: '❌ No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.' };
+      return { ok: false, code: 'NETWORK_ERROR', error: 'No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.' };
     }
 
     if (api.ok && api.data && typeof api.data.id_usuario === 'number') {
@@ -119,7 +119,7 @@ const AUTH = (() => {
       return { ok: false, code: 'EMAIL_EXISTE', error: detalle };
     }
 
-    return { ok: false, code: 'NETWORK_ERROR', error: '❌ No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.' };
+    return { ok: false, code: 'NETWORK_ERROR', error: 'No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.' };
   }
 
   async function ingresar(email, pass, recordar) {
@@ -133,7 +133,7 @@ const AUTH = (() => {
     });
 
     if (api.redError || !api.status) {
-      return { ok: false, code: 'NETWORK_ERROR', error: '❌ No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.' };
+      return { ok: false, code: 'NETWORK_ERROR', error: 'No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.' };
     }
 
     if (api.ok && api.data && typeof api.data.id_usuario === 'number') {
@@ -142,12 +142,14 @@ const AUTH = (() => {
         id_usuario: g.id_usuario,
         email: g.email,
         nombre: g.nombre,
-        desde: new Date().toISOString(),
+        telefono: api.data.telefono || '',
+        fecha_nacimiento: api.data.fecha_nacimiento ? String(api.data.fecha_nacimiento).slice(0, 10) : '',
+        desde: api.data.fecha_registro || new Date().toISOString(),
         recordar: !!recordar,
         origen: 'aws_rds'
       };
       escribir(K_SES, sesionObj);
-      return { ok: true, usuario: { id_usuario: g.id_usuario, email: g.email, nombre: g.nombre } };
+      return { ok: true, usuario: sesionObj };
     }
 
     // Si respondió 401/403 (Credenciales inválidas)
@@ -161,11 +163,31 @@ const AUTH = (() => {
       return { ok: false, code: 'NO_EXISTE', error: detalle };
     }
 
-    return { ok: false, code: 'NETWORK_ERROR', error: '❌ No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.' };
+    return { ok: false, code: 'NETWORK_ERROR', error: 'No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.' };
   }
 
   function sesion() { return leer(K_SES, null); }
   function salir() { borrar(K_SES); }
+  function actualizarSesion(cambios = {}) {
+    const s = sesion();
+    if (!s) return null;
+    const nueva = Object.assign({}, s, {
+      nombre: cambios.nombre != null ? String(cambios.nombre).trim() : s.nombre,
+      telefono: cambios.telefono !== undefined ? (cambios.telefono || '') : (s.telefono || ''),
+      fecha_nacimiento: cambios.fecha_nacimiento !== undefined ? (cambios.fecha_nacimiento ? String(cambios.fecha_nacimiento).slice(0, 10) : '') : (s.fecha_nacimiento || ''),
+      desde: cambios.fecha_registro ? String(cambios.fecha_registro) : s.desde
+    });
+    escribir(K_SES, nueva);
+    if (nueva.email) {
+      const lista = usuarios().map(u => u.email === mail(nueva.email) ? Object.assign({}, u, {
+        nombre: nueva.nombre,
+        telefono: nueva.telefono,
+        fecha_nacimiento: nueva.fecha_nacimiento
+      }) : u);
+      escribir(K_USERS, lista);
+    }
+    return nueva;
+  }
   function invitado() {
     escribir(K_SES, { id_usuario: 1, email: null, nombre: 'Invitado', invitado: true, desde: new Date().toISOString(), recordar: false });
     return { id_usuario: 1, nombre: 'Invitado', email: null, invitado: true };
@@ -173,14 +195,6 @@ const AUTH = (() => {
 
   async function solicitarCodigo(email) {
     if (!emailValido(email)) return { ok: false, code: 'EMAIL_INVALIDO', error: 'Escribe un correo válido, por ejemplo nombre@correo.com.' };
-    if (nube()) {
-      const r = await postNube('accounts:sendOobCode', { requestType: 'PASSWORD_RESET', email: mail(email) });
-      if (!r.ok) return { ok: false, code: r.code, error: r.error };
-      return {
-        ok: true, enviado: true,
-        mensaje: 'Solicitud procesada. Revisa la bandeja de entrada de ' + mail(email) + ' (y la carpeta de spam) y abre el enlace para crear una nueva contraseña.'
-      };
-    }
     const u = buscar(email);
     if (!u) return { ok: false, code: 'NO_EXISTE', error: 'Ese correo no está registrado en este dispositivo.' };
     const codigo = String(Math.floor(100000 + Math.random() * 900000));
@@ -206,39 +220,6 @@ const AUTH = (() => {
     return { ok: true };
   }
 
-  /* ============ Nube opcional (Firebase Authentication REST) ============ */
-  function nube() {
-    const c = window.UNIX_FIREBASE;
-    return (c && c.apiKey && c.projectId && !/TU_|XXXX/i.test(c.apiKey)) ? c : null;
-  }
-  const MSG = {
-    EMAIL_EXISTS: 'Ya existe una cuenta con ese correo. Inicia sesión o recupera tu contraseña.',
-    EMAIL_NOT_FOUND: 'No hay ninguna cuenta con ese correo.',
-    INVALID_EMAIL: 'El correo no tiene un formato válido.',
-    INVALID_PASSWORD: 'Contraseña incorrecta. Inténtalo de nuevo.',
-    WEAK_PASSWORD: 'La contraseña es demasiado débil: usa al menos 6 caracteres.',
-    MISSING_PASSWORD: 'Escribe una contraseña.',
-    TOO_MANY_ATTEMPTS_TRY_LATER: 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.',
-    USER_DISABLED: 'Esta cuenta está deshabilitada.',
-    OPERATION_NOT_ALLOWED: 'El registro con correo no está habilitado en el servicio de autenticación.',
-    NETWORK_REQUEST_FAILED: 'Sin conexión con el servicio de autenticación. Revisa tu internet.'
-  };
-  async function postNube(ruta, cuerpo) {
-    const c = nube();
-    const url = 'https://identitytoolkit.googleapis.com/v1/' + ruta + '?key=' + encodeURIComponent(c.apiKey);
-    let resp;
-    try {
-      resp = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) });
-    } catch (e) {
-      return { ok: false, code: 'NETWORK_REQUEST_FAILED', error: MSG.NETWORK_REQUEST_FAILED };
-    }
-    let data = {};
-    try { data = await resp.json(); } catch (_) { }
-    if (resp.ok) return { ok: true, data };
-    const code = (data && data.error && data.error.message || 'ERROR').split(' ')[0];
-    return { ok: false, code, error: MSG[code] || 'No se pudo completar la operación (' + code + ').' };
-  }
-
   /* Guarda la cuenta también en el dispositivo: permite ingresar sin conexión. */
   async function guardarLocal(nombre, email, pass, idUsuario = 1, origen = 'aws_rds') {
     const s = salt();
@@ -258,16 +239,9 @@ const AUTH = (() => {
   }
 
   function google() {
-    const cfg = window.UNIX_FIREBASE || null;
-    if (!cfg || !cfg.apiKey || !cfg.projectId || /TU_|XXXX/.test(cfg.apiKey)) {
-      return {
-        ok: false, code: 'GOOGLE_NO_CONFIGURADO',
-        error: 'Google necesita Firebase configurado (config/firebase-config.js). Mientras tanto usa correo y contraseña.'
-      };
-    }
     return {
-      ok: false, code: 'GOOGLE_PENDIENTE',
-      error: 'La configuración de Firebase está presente, pero el inicio con Google requiere habilitar el proveedor y el SHA-1 del APK en la consola de Firebase.'
+      ok: false, code: 'GOOGLE_NO_DISPONIBLE',
+      error: 'El acceso con Google no está habilitado en este momento. Inicia sesión con tu correo y contraseña.'
     };
   }
 
@@ -280,9 +254,9 @@ const AUTH = (() => {
   }
 
   return {
-    registrar, ingresar, sesion, salir, invitado, solicitarCodigo, cambiarConCodigo, google,
+    registrar, ingresar, sesion, salir, cerrarSesion: salir, actualizarSesion, invitado, solicitarCodigo, cambiarConCodigo, google,
     eliminarCuenta, emailValido, hidratar,
-    get nubeActiva() { return !!nube(); },
+    get nubeActiva() { return false; },
     get awsActivo() { return true; }
   };
 })();
