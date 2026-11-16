@@ -3,7 +3,7 @@
    UniX Driver · Origen del viaje (libre + GPS + dirección)
    ------------------------------------------------------------
    - Buscar origen por nombre, barrio, dirección o sector.
-   - Sugerencias del catálogo local (747 lugares).
+   - Sugerencias del catálogo oficial verificado.
    - Direcciones reales con Nominatim (OpenStreetMap, sin clave).
    - Ubicación actual del dispositivo (GPS) con permiso del usuario
      y geocodificación inversa para mostrar la dirección.
@@ -36,19 +36,31 @@ const ORIGEN_UI = (() => {
     pintarFrecuentes();
   }
 
-  /* ---------- Lista local (catálogo de lugares) ---------- */
+  /* ---------- Lista local (catálogo verificado de lugares) ---------- */
+  const tieneCoordsOrigen = d => {
+    if (!d || d.estado === 'no verificado') return false;
+    const lat = Number(d.lat);
+    const lon = Number(d.lon);
+    return d.lat != null && d.lon != null && Number.isFinite(lat) && Number.isFinite(lon) && !(lat === 0 && lon === 0);
+  };
+
   function pintarSugerencias(texto) {
     const cont = el('origenList');
     if (!cont) return;
-    const lista = buscarDestinos(texto, 'todas', 14);
+    const lista = buscarDestinos(texto, 'todas', 40).filter(tieneCoordsOrigen);
     resultados = lista.map(d => ({
-      tipo: 'catalogo', id: d.id,
+      tipo: 'catalogo',
+      id: d.id,
       nombre: d.nombre,
-      detalle: [d.barrio, d.categoria].filter(Boolean).join(' · '),
-      lat: d.lat, lon: d.lon
+      barrio: d.barrio || d.nombre,
+      detalle: [d.barrio && d.barrio !== d.nombre ? d.barrio : null, d.categoria].filter(Boolean).join(' · '),
+      lat: Number(d.lat),
+      lon: Number(d.lon)
     }));
     pintarLista();
   }
+
+  const SVG_ORIGEN_PIN = '<svg class="ico-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg>';
 
   function pintarLista() {
     const cont = el('origenList');
@@ -59,8 +71,9 @@ const ORIGEN_UI = (() => {
     }
     cont.innerHTML = resultados.map((r, i) => `
       <button type="button" class="origen-item" data-i="${i}">
-        <span class="origen-pin">${r.lat != null ? '📍' : '🏠'}</span>
+        <span class="origen-pin">${SVG_ORIGEN_PIN}</span>
         <span class="origen-txt"><b>${escO(r.nombre)}</b><small>${escO(r.detalle || '')}</small></span>
+        <span class="origen-choose">Elegir</span>
       </button>`).join('');
     delegarLista();
   }
@@ -156,11 +169,13 @@ const ORIGEN_UI = (() => {
   function elegir(i) {
     const r = resultados[i];
     if (!r) return;
-    if (r.lat == null || r.lon == null) {
-      setText('origenNoticeTxt', 'Ese lugar todavía no tiene ubicación en el mapa. Prueba con otro o escríbela como dirección.');
+    const lat = Number(r.lat);
+    const lon = Number(r.lon);
+    if (r.lat == null || r.lon == null || !Number.isFinite(lat) || !Number.isFinite(lon) || (lat === 0 && lon === 0)) {
+      setText('origenNoticeTxt', 'No se encontraron coordenadas válidas para ese lugar. Elige otro punto o busca una dirección.');
       return;
     }
-    aplicar({ nombre: r.nombre, direccion: r.detalle || '', lat: r.lat, lon: r.lon, fuente: r.tipo });
+    aplicar({ nombre: r.nombre, barrio: r.barrio || r.nombre, direccion: r.detalle || '', lat, lon, fuente: r.tipo });
     cerrar();
   }
 
@@ -170,7 +185,7 @@ const ORIGEN_UI = (() => {
 
   /* ---------- Orígenes frecuentes (historial) ---------- */
   function pintarFrecuentes() {
-    const cont = el('origenFrec');
+    const cont = el('origenFrecuentes') || el('origenFrec');
     if (!cont) return;
     const hist = (typeof leerHistorial === 'function' ? leerHistorial() : []) || [];
     const vistos = {}, lista = [];
@@ -179,7 +194,7 @@ const ORIGEN_UI = (() => {
       const k = h.origen + '|' + h.origen_lat;
       if (vistos[k]) return;
       vistos[k] = 1;
-      lista.push({ nombre: h.origen, lat: h.origen_lat, lon: h.origen_lon });
+      lista.push({ nombre: h.origen, lat: Number(h.origen_lat), lon: Number(h.origen_lon) });
     });
     const base = lista.slice(0, 3);
     if (window.UNIX_CONFIG && UNIX_CONFIG.origenSugerido) {
@@ -187,17 +202,18 @@ const ORIGEN_UI = (() => {
       if (!lista.some(x => Math.abs(x.lat - s.lat) < 1e-6 && Math.abs(x.lon - s.lon) < 1e-6)) base.push(s);
     }
     cont.innerHTML = base.map((x, i) => `
-      <button class="origen-chip" onclick="ORIGEN_UI.elegirFrecuente(${i})">${x.nombre}</button>`).join('');
+      <button type="button" class="origen-chip" onclick="ORIGEN_UI.elegirFrecuente(${i})">${escO(x.nombre)}</button>`).join('');
     cont.dataset.lista = JSON.stringify(base);
   }
 
   function elegirFrecuente(i) {
-    const cont = el('origenFrec');
+    const cont = el('origenFrecuentes') || el('origenFrec');
+    if (!cont) return;
     let base = [];
     try { base = JSON.parse(cont.dataset.lista || '[]'); } catch (_) {}
     const x = base[i];
-    if (!x) return;
-    aplicar({ nombre: x.nombre, direccion: x.direccion || '', lat: x.lat, lon: x.lon, fuente: 'sugerido' });
+    if (!x || x.lat == null || x.lon == null) return;
+    aplicar({ nombre: x.nombre, barrio: x.barrio || x.nombre, direccion: x.direccion || '', lat: Number(x.lat), lon: Number(x.lon), fuente: 'sugerido' });
     cerrar();
   }
 
