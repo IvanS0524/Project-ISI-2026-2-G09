@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, status
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from backend.database.conexion import get_db
@@ -10,6 +12,20 @@ from backend.schemas.viaje import (
 from backend.services import viaje_service
 
 router = APIRouter(prefix="/viajes", tags=["Viajes e Historial"])
+
+
+@router.get(
+    "/",
+    response_model=list[ViajeRespuesta],
+    status_code=status.HTTP_200_OK,
+    summary="Listar todos los viajes del sistema (Administrador)",
+)
+def listar_todos_los_viajes(
+    estado: Optional[str] = Query(default=None),
+    db: Session = Depends(get_db),
+):
+    """Lista todos los viajes del sistema con detalles de oferta, conductor, vehículo y origen/destino."""
+    return viaje_service.listar_viajes_sistema(db, estado=estado)
 
 
 @router.post(

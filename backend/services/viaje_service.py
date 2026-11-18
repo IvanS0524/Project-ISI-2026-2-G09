@@ -1,5 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
+from typing import Optional
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -79,6 +81,13 @@ def consultar_historial_usuario(db: Session, id_usuario: int) -> list[Viaje]:
             detail="El usuario consultado no existe.",
         )
     return viaje_repository.listar_viajes_por_usuario(db, id_usuario)
+
+
+def listar_viajes_sistema(
+    db: Session, estado: Optional[str] = None
+) -> list[Viaje]:
+    """Caso de Uso Administrador: Lista todos los viajes registrados en el sistema."""
+    return viaje_repository.listar_todos_los_viajes(db, estado=estado)
 
 
 def actualizar_estado_viaje(
