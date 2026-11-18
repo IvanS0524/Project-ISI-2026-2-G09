@@ -28,6 +28,13 @@ def listar_configuraciones(db: Session) -> list[ConfiguracionComision]:
     )
 
 
+def listar_configuraciones_comision(
+    db: Session,
+) -> list[ConfiguracionComision]:
+    """Lista todo el historial de configuraciones de comisión ordenado por id_configuracion descendente."""
+    return listar_configuraciones(db)
+
+
 def crear_configuracion_comision(
     db: Session, datos: ConfiguracionComisionCrear
 ) -> ConfiguracionComision:

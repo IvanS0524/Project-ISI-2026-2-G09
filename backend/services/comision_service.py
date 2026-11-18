@@ -49,3 +49,10 @@ def crear_nueva_configuracion(
 def listar_todas_las_comisiones(db: Session) -> list[Comision]:
     """Lista todas las comisiones generadas por los viajes para reportes administrativos."""
     return comision_repository.listar_comisiones(db)
+
+
+def listar_historial_configuraciones(
+    db: Session,
+) -> list[ConfiguracionComision]:
+    """Lista el historial completo de configuraciones de porcentaje de comisión."""
+    return comision_repository.listar_configuraciones_comision(db)
