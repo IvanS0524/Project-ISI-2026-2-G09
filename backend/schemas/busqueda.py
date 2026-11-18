@@ -38,6 +38,18 @@ class VehiculoRespuesta(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class BusquedaResumenRespuesta(BaseModel):
+    """Esquema resumen de la búsqueda asociada a una oferta (origen, destino y pasajero)."""
+
+    id_busqueda: int
+    origen: str
+    destino: str
+    fecha_hora: datetime
+    id_usuario: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class OfertaRespuesta(BaseModel):
     """Esquema de salida para una oferta de transporte con sus detalles anidados."""
 
@@ -51,6 +63,7 @@ class OfertaRespuesta(BaseModel):
     plataforma: PlataformaRespuesta
     conductor: ConductorRespuesta
     vehiculo: VehiculoRespuesta
+    busqueda: Optional[BusquedaResumenRespuesta] = None
 
     model_config = ConfigDict(from_attributes=True)
 

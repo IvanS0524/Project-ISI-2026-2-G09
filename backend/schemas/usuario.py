@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -52,6 +52,14 @@ class UsuarioActualizar(BaseModel):
     nombre: Optional[str] = Field(None, min_length=2, max_length=100)
     telefono: Optional[str] = Field(None, max_length=20)
     fecha_nacimiento: Optional[date] = None
+
+
+class UsuarioEstadoActualizar(BaseModel):
+    """Esquema de entrada para cambiar el estado de una cuenta de usuario (Administrador)."""
+
+    estado: Literal["ACTIVO", "INACTIVO", "SUSPENDIDO"] = Field(
+        ..., examples=["ACTIVO"]
+    )
 
 
 class UsuarioRespuesta(UsuarioBase):

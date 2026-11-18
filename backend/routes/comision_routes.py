@@ -25,6 +25,17 @@ def obtener_configuracion_vigente(db: Session = Depends(get_db)):
     return comision_service.obtener_configuracion_vigente(db)
 
 
+@router.get(
+    "/configuracion/historial",
+    response_model=list[ConfiguracionComisionRespuesta],
+    status_code=status.HTTP_200_OK,
+    summary="Consultar historial de configuraciones de comisión (Administrador)",
+)
+def listar_historial_configuraciones(db: Session = Depends(get_db)):
+    """Devuelve todas las configuraciones de porcentaje de comisión ordenadas de la más reciente a la más antigua."""
+    return comision_service.listar_historial_configuraciones(db)
+
+
 @router.post(
     "/configuracion",
     response_model=ConfiguracionComisionRespuesta,

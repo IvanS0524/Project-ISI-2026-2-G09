@@ -30,6 +30,16 @@ def listar_viajes_por_usuario(db: Session, id_usuario: int) -> list[Viaje]:
     )
 
 
+def listar_todos_los_viajes(
+    db: Session, estado: Optional[str] = None
+) -> list[Viaje]:
+    """Lista todos los viajes del sistema ordenados del más reciente al más antiguo (Administrador)."""
+    consulta = db.query(Viaje)
+    if estado is not None:
+        consulta = consulta.filter(Viaje.estado == estado.strip().upper())
+    return consulta.order_by(Viaje.id_viaje.desc()).all()
+
+
 def crear_viaje(
     db: Session,
     datos: ViajeCrear,
