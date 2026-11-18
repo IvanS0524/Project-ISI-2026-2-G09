@@ -572,6 +572,9 @@ const FLOW = (() => {
     const pctTexto = (pctAplicado * 100).toFixed(1).replace(/\.0$/, '');
     setText('fareBig', money(tarifa));
     setText('fareRoute', nombreOrigen() + ' → ' + nombreDestino() + ' · ' + kmTexto(trip.rutaKm));
+    setText('payConductor', (trip.oferta && trip.oferta.conductor) ? trip.oferta.conductor : 'Conductor verificado');
+    setText('payVehiculo', vehLabel(trip.vehiculo) + (trip.oferta && trip.oferta.plataforma ? ' · ' + trip.oferta.plataforma : ''));
+    setText('payDistancia', kmTexto(trip.rutaKm));
     setText('fare', money(tarifa));
     setText('commissionLabel', 'Comisión UniX Driver (' + pctTexto + '%)');
     setText('commission', '-' + money(comision));
