@@ -47,6 +47,16 @@ const AUTH_UI = (() => {
   }
 
   function entrar(usuario) {
+    const ses = usuario || (typeof AUTH !== 'undefined' && AUTH.sesion ? AUTH.sesion() : null);
+    if (ses && Number(ses.id_rol) === 2) {
+      if (typeof ADMIN !== 'undefined' && typeof ADMIN.abrir === 'function') {
+        ADMIN.abrir();
+        return;
+      }
+    }
+    if (typeof ADMIN !== 'undefined' && typeof ADMIN.ocultar === 'function') {
+      ADMIN.ocultar();
+    }
     UI.actualizarBadgeUsuario();
     UI.limpiarUIviaje();
     UI.goToScreen(1, true);
@@ -157,9 +167,12 @@ const AUTH_UI = (() => {
 
   function salir() {
     AUTH.salir();
+    if (typeof ADMIN !== 'undefined' && typeof ADMIN.ocultar === 'function') {
+      ADMIN.ocultar();
+    }
     UI.cerrarCuenta();
-    ['cuentaOverlay', 'pickerOverlay', 'origenOverlay', 'cancelOverlay'].forEach(id => UI.ocultar(id));
-    document.body.classList.remove('auth-ok');
+    ['cuentaOverlay', 'pickerOverlay', 'origenOverlay', 'cancelOverlay', 'masInfoOverlay'].forEach(id => UI.ocultar(id));
+    document.body.classList.remove('auth-ok', 'admin-mode');
     resetTripState();
     UI.limpiarUIviaje();
     limpiarFormularioLogin();
@@ -171,9 +184,12 @@ const AUTH_UI = (() => {
   function borrarCuenta() {
     if (window.confirm && !window.confirm('¿Eliminar tu cuenta y los datos de sesión en este dispositivo? El historial de viajes se conserva.')) return;
     AUTH.eliminarCuenta();
+    if (typeof ADMIN !== 'undefined' && typeof ADMIN.ocultar === 'function') {
+      ADMIN.ocultar();
+    }
     UI.cerrarCuenta();
-    ['cuentaOverlay', 'pickerOverlay', 'origenOverlay', 'cancelOverlay'].forEach(id => UI.ocultar(id));
-    document.body.classList.remove('auth-ok');
+    ['cuentaOverlay', 'pickerOverlay', 'origenOverlay', 'cancelOverlay', 'masInfoOverlay'].forEach(id => UI.ocultar(id));
+    document.body.classList.remove('auth-ok', 'admin-mode');
     resetTripState();
     UI.limpiarUIviaje();
     limpiarFormularioLogin();
@@ -213,10 +229,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   try { await hidratarPersistencia(); } catch (_) {}
   try { await AUTH.hidratar(); } catch (_) {}
 
-  // 5) Sesión existente → entrar directo (la barra inferior aparece solo aquí)
+  // 5) Sesión existente → entrar directo (Administrador o Pasajero)
   const s = AUTH.sesion();
   UI.actualizarBadgeUsuario();
-  if (s && (s.nombre || s.email || s.invitado)) { UI.goToScreen(1, true); } else { UI.goToScreen(0, true); }
+  if (s && Number(s.id_rol) === 2 && typeof ADMIN !== 'undefined' && typeof ADMIN.abrir === 'function') {
+    ADMIN.abrir();
+  } else if (s && (s.nombre || s.email || s.invitado)) {
+    UI.goToScreen(1, true);
+  } else {
+    UI.goToScreen(0, true);
+  }
 
   // 6) Selector de vehículo inicial
   if (document.getElementById('btnMoto')) document.getElementById('btnMoto').classList.add('active');

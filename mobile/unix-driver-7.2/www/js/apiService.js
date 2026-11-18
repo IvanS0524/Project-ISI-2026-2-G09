@@ -243,6 +243,85 @@
         throw new Error(extraerError(res, 'No se pudo obtener la comisión activa'));
       }
       return res.data;
+    },
+
+    // 11. Listar usuarios para el Panel de Administrador (GET /usuarios/)
+    async listarUsuarios(filtros = {}) {
+      const params = [];
+      if (filtros && filtros.id_rol != null && filtros.id_rol !== '') {
+        params.push('id_rol=' + encodeURIComponent(filtros.id_rol));
+      }
+      if (filtros && filtros.estado) {
+        params.push('estado=' + encodeURIComponent(String(filtros.estado).trim().toUpperCase()));
+      }
+      const ruta = params.length ? `/usuarios/?${params.join('&')}` : '/usuarios/';
+      const res = await peticion(ruta, { method: 'GET', timeoutMs: 6000 });
+      if (!res.ok || !Array.isArray(res.data)) {
+        throw new Error(extraerError(res, 'No se pudo obtener la lista de usuarios'));
+      }
+      return res.data;
+    },
+
+    // 12. Cambiar estado de un usuario (PATCH /usuarios/{id_usuario}/estado)
+    async cambiarEstadoUsuario(idUsuario, estado) {
+      const res = await peticion(`/usuarios/${encodeURIComponent(idUsuario)}/estado`, {
+        method: 'PATCH',
+        body: { estado: String(estado || '').trim().toUpperCase() }
+      });
+      if (!res.ok) {
+        throw new Error(extraerError(res, 'No se pudo actualizar el estado del usuario'));
+      }
+      return res.data;
+    },
+
+    // 13. Listar todos los viajes del sistema (GET /viajes/)
+    async listarTodosLosViajes(estado = null) {
+      const ruta = estado
+        ? `/viajes/?estado=${encodeURIComponent(String(estado).trim().toUpperCase())}`
+        : '/viajes/';
+      const res = await peticion(ruta, { method: 'GET', timeoutMs: 6000 });
+      if (!res.ok || !Array.isArray(res.data)) {
+        throw new Error(extraerError(res, 'No se pudo obtener el listado de viajes'));
+      }
+      return res.data;
+    },
+
+    // 14. Listar todas las comisiones generadas (GET /comisiones/)
+    async listarComisiones() {
+      const res = await peticion('/comisiones/', { method: 'GET', timeoutMs: 6000 });
+      if (!res.ok || !Array.isArray(res.data)) {
+        throw new Error(extraerError(res, 'No se pudo obtener el listado de comisiones'));
+      }
+      return res.data;
+    },
+
+    // 15. Consultar historial de configuraciones de comisión (GET /comisiones/configuracion/historial)
+    async obtenerHistorialConfigComision() {
+      const res = await peticion('/comisiones/configuracion/historial', {
+        method: 'GET',
+        timeoutMs: 6000
+      });
+      if (!res.ok || !Array.isArray(res.data)) {
+        throw new Error(extraerError(res, 'No se pudo obtener el historial de comisiones'));
+      }
+      return res.data;
+    },
+
+    // 16. Crear nueva configuración de comisión activa (POST /comisiones/configuracion)
+    async crearConfiguracionComision({ porcentaje, id_administrador }) {
+      const res = await peticion('/comisiones/configuracion', {
+        method: 'POST',
+        body: {
+          porcentaje: Number(porcentaje),
+          fecha_inicio: new Date().toISOString(),
+          estado: 'ACTIVA',
+          id_administrador: Number(id_administrador)
+        }
+      });
+      if (!res.ok) {
+        throw new Error(extraerError(res, 'No se pudo guardar la nueva configuración de comisión'));
+      }
+      return res.data;
     }
   };
 

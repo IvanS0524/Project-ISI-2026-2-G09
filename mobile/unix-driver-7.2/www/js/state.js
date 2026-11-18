@@ -12,7 +12,7 @@ const CFG_TAR = () => (window.UNIX_CONFIG && UNIX_CONFIG.tarifas) || {};
 const ORIGEN_SUGERIDO = (window.UNIX_CONFIG && UNIX_CONFIG.origenSugerido) ||
   { nombre: 'Universidad de Cartagena', barrio: 'Zaragocilla', direccion: 'Campus Piedra de Bolívar', lat: 10.401904, lon: -75.508695 };
 
-const COMISION_PCT = 0.10;
+let COMISION_PCT = 0.10;
 const LS_HIST = 'unixdriver.historial.v2';
 
 const ESTADOS = {
