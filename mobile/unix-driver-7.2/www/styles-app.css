@@ -312,14 +312,25 @@ body.on-login .screen-container {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: calc(24px + env(safe-area-inset-top, 0px)) 20px 0 20px;
+  justify-content: flex-start;
+  padding: calc(clamp(20px, 4vh, 36px) + env(safe-area-inset-top, 0px)) 22px 0 22px;
   box-sizing: border-box;
-  gap: 16px;
+  gap: clamp(12px, 2vh, 18px);
+}
+
+.login-main-block {
+  margin-top: auto;
+  margin-bottom: auto;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2.2vh, 22px);
 }
 
 .login-top-block {
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2vh, 20px);
 }
 
 .brand-header {
@@ -327,7 +338,7 @@ body.on-login .screen-container {
   align-items: center;
   justify-content: flex-start;
   gap: 12px;
-  margin: 0 0 18px;
+  margin: 0;
 }
 
 .brand-logo,
@@ -348,7 +359,7 @@ body.on-login .screen-container {
 .brand-texts h1,
 .brand-header-text strong {
   display: block;
-  font-size: 21px;
+  font-size: clamp(22px, 5.5vw, 25px);
   font-weight: 800;
   color: #0A2540;
   letter-spacing: -0.4px;
@@ -359,9 +370,9 @@ body.on-login .screen-container {
 .brand-texts p,
 .brand-header-text span {
   display: block;
-  font-size: 13px;
-  color: #64748B;
-  font-weight: 500;
+  font-size: 14px;
+  color: #475569;
+  font-weight: 600;
   margin: 2px 0 0;
 }
 
@@ -384,19 +395,20 @@ body.on-login .screen-container {
 .login-title,
 .login-hero-copy h1,
 .login-hero-copy h2 {
-  font-size: 28px;
+  font-size: clamp(28px, 7vw, 32px);
   font-weight: 800;
   color: #0A2540;
-  line-height: 1.14;
-  letter-spacing: -0.6px;
-  margin: 0 0 6px;
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+  margin: 0 0 8px;
 }
 
 .login-subtitle,
 .login-hero-copy p {
-  font-size: 13.5px;
-  color: #64748B;
-  line-height: 1.42;
+  font-size: 15px;
+  font-weight: 500;
+  color: #475569;
+  line-height: 1.45;
   margin: 0;
 }
 
@@ -511,9 +523,9 @@ body.on-login .screen-container {
 .field-body label,
 .input-body label {
   display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: #64748B;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #334155;
   margin-bottom: 3px;
 }
 
@@ -525,9 +537,9 @@ body.on-login .screen-container {
   border: none !important;
   background: transparent !important;
   padding: 0 !important;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
-  color: #0A2540;
+  color: #0F172A;
   outline: none !important;
   box-shadow: none !important;
   border-radius: 0 !important;
@@ -569,8 +581,8 @@ body.on-login .screen-container {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 14.5px;
+  font-weight: 700;
   color: #1E293B;
   margin: 0;
   cursor: pointer;
@@ -585,8 +597,8 @@ body.on-login .screen-container {
 }
 
 .forgot-link {
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 14.5px;
+  font-weight: 700;
   color: #0B46C4;
   text-decoration: none;
 }
@@ -648,10 +660,10 @@ body.on-login .screen-container {
 
 .auth-switch {
   text-align: center;
-  font-size: 14px;
-  color: #64748B;
+  font-size: 14.5px;
+  color: #475569;
   margin: 0;
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .auth-switch a {
@@ -662,8 +674,8 @@ body.on-login .screen-container {
 }
 
 .login-bottom-art {
-  margin: auto -20px 0;
-  width: calc(100% + 40px);
+  margin: 0 -22px 0;
+  width: calc(100% + 44px);
   height: 150px;
   padding-top: 0;
   line-height: 0;
@@ -1682,21 +1694,30 @@ body.auth-ok:not(.on-login) .bottom-nav {
 #screen8.active {
   display: flex !important;
   flex-direction: column;
-  min-height: calc(100dvh - 100px);
-  padding-bottom: 0 !important;
+  justify-content: flex-start;
+  padding-bottom: 14px !important;
 }
 
-#screen7 .pay-card,
-#screen8 .receipt-card {
-  flex: 1;
-  min-height: calc(100dvh - 100px);
+#screen7 .pay-card {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 24px 20px !important;
   border-radius: 24px !important;
   margin-bottom: 0 !important;
-  gap: 18px;
+  gap: clamp(16px, 2.5vh, 24px);
+  border: 1px solid #EEF2F7 !important;
+  box-shadow: 0 8px 28px rgba(10, 37, 64, 0.06) !important;
+}
+
+#screen8 .receipt-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  padding: 22px 18px !important;
+  border-radius: 24px !important;
+  margin-bottom: 0 !important;
+  gap: clamp(14px, 2vh, 20px);
   border: 1px solid #EEF2F7 !important;
   box-shadow: 0 8px 28px rgba(10, 37, 64, 0.06) !important;
 }
@@ -1719,7 +1740,8 @@ body.auth-ok:not(.on-login) .bottom-nav {
 }
 
 #screen7 .fare-hero b {
-  font-size: 34px;
+  font-size: clamp(32px, 8vw, 38px);
+  font-weight: 800;
   margin: 4px 0;
 }
 
@@ -1732,19 +1754,67 @@ body.auth-ok:not(.on-login) .bottom-nav {
 #screen7 .pay-middle {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: clamp(16px, 2.2vh, 20px);
+}
+
+.pay-trip-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+
+.pay-meta-item {
+  min-width: 0;
+}
+
+.pay-meta-item small {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748B;
+  margin-bottom: 2px;
+}
+
+.pay-meta-item b {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0F172A;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 #screen7 .pay-row {
   padding: 14px 15px;
-  font-size: 14.5px;
+  font-size: 15px;
+  font-weight: 600;
   gap: 12px;
+}
+
+#screen7 .pay-row span {
+  font-weight: 600;
+  color: #334155;
+}
+
+#screen7 .pay-row b {
+  font-weight: 700;
+  color: #0F172A;
+}
+
+#screen7 .pay-row.total b {
+  font-weight: 800;
 }
 
 #screen7 .field label {
   font-size: 12px;
+  font-weight: 700;
   margin-bottom: 6px;
-  color: #64748B;
+  color: #475569;
 }
 
 #screen7 #metodoPago {
@@ -1754,6 +1824,10 @@ body.auth-ok:not(.on-login) .bottom-nav {
   border-radius: 14px;
   border: 1.5px solid #E2E8F0;
   color: #0A2540;
+}
+
+#screen7 .pay-bottom {
+  margin-top: 8px;
 }
 
 #screen7 .btn-pay-confirm {
@@ -1786,9 +1860,9 @@ body.auth-ok:not(.on-login) .bottom-nav {
 #receiptBox {
   width: 100%;
   margin-top: 0;
-  padding: 8px 16px;
+  padding: 16px 18px;
   border-radius: 18px;
-  border: 1px dashed #CBD5E1;
+  border: 1px solid #E2E8F0;
   background: #F8FAFC;
   display: flex;
   flex-direction: column;
@@ -1800,8 +1874,8 @@ body.auth-ok:not(.on-login) .bottom-nav {
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
-  font-size: 14px;
-  padding: 8px 0;
+  font-size: 14.5px;
+  padding: 9px 0;
   border-bottom: 1px dashed #E2E8F0;
 }
 
@@ -1816,7 +1890,7 @@ body.auth-ok:not(.on-login) .bottom-nav {
 }
 
 #receiptBox .row .value {
-  color: #0A2540;
+  color: #0F172A;
   font-weight: 700;
   text-align: right;
   word-break: break-word;

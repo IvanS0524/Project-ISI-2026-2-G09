@@ -22,8 +22,9 @@
       <section id="screen0" class="screen active">
         <div class="auth-wrap">
 
-          <!-- Bloque superior: marca + bienvenida + skyline -->
-          <div class="login-top-block">
+          <div class="login-main-block">
+            <!-- Bloque superior: marca + bienvenida + skyline -->
+            <div class="login-top-block">
             <!-- Header de marca -->
             <div class="brand-header">
               <div class="brand-logo" aria-hidden="true">U</div>
@@ -291,6 +292,7 @@
             <p class="auth-switch login-register-line">¿No tienes una cuenta? <a href="#"
                 onclick="AUTH_UI.tab('registro');return false;">Regístrate</a></p>
           </div>
+          </div><!-- /login-main-block -->
 
           <!-- Ilustración inferior de Cartagena (Castillo San Felipe + Murallas + Palmeras + Auto Azul) -->
           <div class="login-bottom-art" aria-hidden="true">
@@ -786,6 +788,11 @@
           </div>
 
           <div class="pay-middle">
+            <div class="pay-trip-meta" id="payTripMeta">
+              <div class="pay-meta-item"><small>Conductor</small><b id="payConductor">-</b></div>
+              <div class="pay-meta-item"><small>Vehículo</small><b id="payVehiculo">-</b></div>
+              <div class="pay-meta-item"><small>Distancia</small><b id="payDistancia">-</b></div>
+            </div>
             <div class="pay-rows">
               <div class="pay-row"><span>Tarifa que paga el pasajero</span><b id="fare">$0</b></div>
               <div class="pay-row"><span id="commissionLabel">Comisión UniX Driver (10%)</span><b id="commission"
