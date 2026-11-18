@@ -1,4 +1,6 @@
 import hashlib
+from typing import Optional
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -7,6 +9,7 @@ from backend.models.usuario import Usuario
 from backend.schemas.usuario import (
     UsuarioActualizar,
     UsuarioCrear,
+    UsuarioEstadoActualizar,
     UsuarioLogin,
 )
 
@@ -87,3 +90,22 @@ def actualizar_perfil_usuario(
     """Caso de Uso DSS03P: Actualiza los datos básicos del perfil del usuario."""
     usuario = obtener_perfil_usuario(db, id_usuario)
     return usuario_repository.actualizar_usuario(db, usuario, datos)
+
+
+def listar_todos_los_usuarios(
+    db: Session,
+    id_rol: Optional[int] = None,
+    estado: Optional[str] = None,
+) -> list[Usuario]:
+    """Caso de Uso Administrador: Lista los usuarios registrados con filtros opcionales."""
+    return usuario_repository.listar_usuarios(db, id_rol=id_rol, estado=estado)
+
+
+def cambiar_estado_usuario(
+    db: Session, id_usuario: int, datos: UsuarioEstadoActualizar
+) -> Usuario:
+    """Caso de Uso Administrador: Actualiza el estado de una cuenta de usuario."""
+    usuario = obtener_perfil_usuario(db, id_usuario)
+    return usuario_repository.actualizar_estado_usuario(
+        db, usuario, datos.estado
+    )

@@ -17,9 +17,18 @@ def obtener_por_correo(db: Session, correo: str) -> Optional[Usuario]:
     """Busca un usuario por su correo electrónico único (útil en DSS01P y DSS02P)."""
     return db.query(Usuario).filter(Usuario.correo == correo).first()
 
-def listar_usuarios(db: Session) -> list[Usuario]:
+def listar_usuarios(
+    db: Session,
+    id_rol: Optional[int] = None,
+    estado: Optional[str] = None,
+) -> list[Usuario]:
     """Lista todos los usuarios registrados ordenados por ID (para el Administrador)."""
-    return db.query(Usuario).order_by(Usuario.id_usuario.asc()).all()
+    consulta = db.query(Usuario)
+    if id_rol is not None:
+        consulta = consulta.filter(Usuario.id_rol == id_rol)
+    if estado is not None:
+        consulta = consulta.filter(Usuario.estado == estado.strip().upper())
+    return consulta.order_by(Usuario.id_usuario.asc()).all()
 
 def crear_usuario(
     db: Session, datos: UsuarioCrear, contrasena_hash: str
@@ -46,6 +55,16 @@ def actualizar_usuario(
     for campo, valor in campos_a_actualizar.items():
         setattr(usuario_db, campo, valor)
 
+    db.commit()
+    db.refresh(usuario_db)
+    return usuario_db
+
+
+def actualizar_estado_usuario(
+    db: Session, usuario_db: Usuario, nuevo_estado: str
+) -> Usuario:
+    """Actualiza el estado de un usuario ('ACTIVO', 'INACTIVO', 'SUSPENDIDO')."""
+    usuario_db.estado = nuevo_estado
     db.commit()
     db.refresh(usuario_db)
     return usuario_db
