@@ -72,7 +72,7 @@ w.fetch = async (url, opts = {}) => {
 };
 w.navigator.geolocation = { getCurrentPosition: (ok) => ok({ coords: { latitude: 10.42, longitude: -75.54 } }) };
 for (const f of ['config/api-env.js','config/tarifas.js','js/storage.js','js/apiService.js','js/auth.js',
-  'js/mapa.js','data/destinos.js','js/state.js','js/destinos.js','js/origen.js','js/ui.js','js/flows.js','js/viaje.js','js/boot.js']) {
+  'js/mapa.js','data/destinos.js','js/state.js','js/destinos.js','js/origen.js','js/ui.js','js/flows.js','js/viaje.js','js/admin.js','js/boot.js']) {
   if (!fs.existsSync(www + '/' + f)) continue;
   const c = d.createElement('script'); c.textContent = fs.readFileSync(www + '/' + f, 'utf8'); d.body.appendChild(c);
 }
