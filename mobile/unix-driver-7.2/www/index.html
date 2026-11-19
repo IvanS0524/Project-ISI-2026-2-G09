@@ -1143,6 +1143,379 @@
         <span class="nav-lbl">Más</span>
       </button>
     </nav>
+
+    <!-- ============ PANEL DE ADMINISTRADOR (SESIÓN DE ADMINISTRADOR UNIX) ============ -->
+    <div id="adminAppView" class="admin-app-view hidden">
+      <!-- Cabecera superior blanca del Administrador -->
+      <header class="admin-topbar">
+        <div class="admin-brand">
+          <div class="admin-logo-u" aria-hidden="true">U</div>
+          <span class="admin-brand-name">UniX Driver</span>
+        </div>
+        <div class="admin-top-actions">
+          <button type="button" id="btnAdminPerfil" class="admin-icon-btn" onclick="ADMIN.abrirPerfilAdmin()" aria-label="Perfil del Administrador y Aspectos Legales" title="Perfil del Administrador y Aspectos Legales">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+          </button>
+          <button type="button" id="btnAdminRefresh" class="admin-icon-btn" onclick="ADMIN.recargarDatos()" aria-label="Recargar datos">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10"/>
+              <polyline points="1 20 1 14 7 14"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+          </button>
+          <button type="button" id="btnAdminLogout" class="admin-logout-btn" onclick="ADMIN.cerrarSesion()" aria-label="Cerrar sesión">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+              <polyline points="16 17 21 12 16 7"/>
+              <line x1="21" y1="12" x2="9" y2="12"/>
+            </svg>
+            <span>Salir</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="admin-main">
+        <!-- ============ PESTAÑA 1: PANEL ============ -->
+        <section id="adminTabPanel" class="admin-tab-section active">
+          <div class="admin-hero-head">
+            <h1 class="admin-page-title">Panel</h1>
+            <p class="admin-page-sub" id="adminSessionSub">Sesión de Administrador UniX</p>
+          </div>
+
+          <div id="adminNotice" class="notice hidden"></div>
+
+          <!-- Cuadrícula 2x2 de KPIs -->
+          <div class="admin-kpi-grid">
+            <div class="admin-kpi-card">
+              <div class="admin-kpi-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <b class="admin-kpi-val" id="kpiPasajerosActivos">0</b>
+              <span class="admin-kpi-lbl">Pasajeros activos</span>
+            </div>
+
+            <div class="admin-kpi-card">
+              <div class="admin-kpi-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                  <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+              </div>
+              <b class="admin-kpi-val" id="kpiViajesFinalizados">0</b>
+              <span class="admin-kpi-lbl">Viajes finalizados</span>
+            </div>
+
+            <div class="admin-kpi-card">
+              <div class="admin-kpi-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="12" y1="1" x2="12" y2="23"/>
+                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+              </div>
+              <b class="admin-kpi-val" id="kpiIngresosComision">$ 0</b>
+              <span class="admin-kpi-lbl">Ingresos por comisión</span>
+            </div>
+
+            <div class="admin-kpi-card">
+              <div class="admin-kpi-ico" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="19" y1="5" x2="5" y2="19"/>
+                  <circle cx="6.5" cy="6.5" r="2.5"/>
+                  <circle cx="17.5" cy="17.5" r="2.5"/>
+                </svg>
+              </div>
+              <b class="admin-kpi-val" id="kpiComisionVigente">10%</b>
+              <span class="admin-kpi-lbl">Comisión vigente</span>
+            </div>
+          </div>
+
+          <!-- Botones de acción rápida en fila -->
+          <div class="admin-quick-actions">
+            <button type="button" id="btnQuickUsuarios" class="admin-quick-btn" onclick="ADMIN.irATab('usuarios')">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+              </svg>
+              <span>Usuarios</span>
+            </button>
+            <button type="button" id="btnQuickComision" class="admin-quick-btn" onclick="ADMIN.irATab('comision')">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="5" x2="5" y2="19"/>
+                <circle cx="6.5" cy="6.5" r="2.5"/>
+                <circle cx="17.5" cy="17.5" r="2.5"/>
+              </svg>
+              <span>Comisión</span>
+            </button>
+          </div>
+
+          <!-- Tarjeta "Viajes recientes" -->
+          <div class="admin-card">
+            <div class="admin-card-head">
+              <h2>Viajes recientes</h2>
+              <span class="admin-badge-soft" id="adminRecentCount">0 viajes</span>
+            </div>
+            <div id="adminRecentTripsList" class="admin-trips-list"></div>
+          </div>
+        </section>
+
+        <!-- ============ PESTAÑA 2: USUARIOS ============ -->
+        <section id="adminTabUsuarios" class="admin-tab-section hidden">
+          <div class="admin-hero-head">
+            <h1 class="admin-page-title">Usuarios</h1>
+            <p class="admin-page-sub">Gestión de pasajeros y estado de cuentas</p>
+          </div>
+
+          <div class="admin-card">
+            <input id="adminUserSearch" type="search" class="picker-input admin-search-input"
+              placeholder="Buscar por nombre o correo…" oninput="ADMIN.filtrarUsuarios()" autocomplete="off">
+
+            <div class="admin-chips-row" id="adminUserChips">
+              <button type="button" class="admin-chip active" data-filtro="todos" onclick="ADMIN.setFiltroUsuarios('todos')">Todos</button>
+              <button type="button" class="admin-chip" data-filtro="ACTIVO" onclick="ADMIN.setFiltroUsuarios('ACTIVO')">Activos</button>
+              <button type="button" class="admin-chip" data-filtro="INACTIVO" onclick="ADMIN.setFiltroUsuarios('INACTIVO')">Inactivos</button>
+            </div>
+
+            <div id="adminUsersNotice" class="notice hidden"></div>
+            <div id="adminUsersList" class="admin-users-list"></div>
+          </div>
+        </section>
+
+        <!-- ============ PESTAÑA 3: COMISIÓN ============ -->
+        <section id="adminTabComision" class="admin-tab-section hidden">
+          <div class="admin-hero-head">
+            <h1 class="admin-page-title">Comisión</h1>
+            <p class="admin-page-sub">Configuración de porcentaje vigente e historial</p>
+          </div>
+
+          <!-- Tarjeta comisión vigente -->
+          <div class="admin-comm-hero">
+            <div>
+              <small>PORCENTAJE DE COMISIÓN VIGENTE</small>
+              <b id="adminComisionActualVal">10%</b>
+              <span>Se aplica automáticamente sobre cada viaje completado</span>
+            </div>
+            <span class="admin-status-pill ok">ACTIVA</span>
+          </div>
+
+          <!-- Formulario de ajuste de comisión -->
+          <div class="admin-card">
+            <div class="admin-card-head">
+              <h2>Ajustar porcentaje de comisión</h2>
+            </div>
+            <div class="field input-box">
+              <div class="field-body">
+                <label for="adminNuevoPorcentaje">Nuevo porcentaje (% entre 0 y 100)</label>
+                <input id="adminNuevoPorcentaje" type="number" min="0" max="100" step="0.1" value="10"
+                  oninput="ADMIN.actualizarPreviewComision()">
+              </div>
+            </div>
+            <div id="adminComisionPreview" class="admin-preview-box">
+              En un viaje de <b>$ 10.000</b>: comisión UniX <b>$ 1.000</b> (10%) · neto conductor <b>$ 9.000</b>
+            </div>
+            <button type="button" id="btnGuardarComision" class="btn btn-primary btn-block search-submit-btn"
+              onclick="ADMIN.guardarComision()">Actualizar comisión</button>
+            <div id="adminComisionNotice" class="notice hidden"></div>
+          </div>
+
+          <!-- Historial de configuraciones -->
+          <div class="admin-card">
+            <div class="admin-card-head">
+              <h2>Historial de configuraciones</h2>
+            </div>
+            <div id="adminHistConfigList" class="admin-hist-list"></div>
+          </div>
+
+          <!-- Listado de comisiones generadas por viaje -->
+          <div class="admin-card">
+            <div class="admin-card-head">
+              <h2>Comisiones generadas por viaje</h2>
+            </div>
+            <div class="admin-privacy-note">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+              <span>Minimización de datos (Ley 1581 de 2012 - Habeas Data): liquidación contable anonimizada sin exposición de rutas individuales (origen o destino).</span>
+            </div>
+            <div id="adminComisionesViajesList" class="admin-hist-list"></div>
+          </div>
+        </section>
+
+        <!-- ============ PESTAÑA 4: REPORTES ============ -->
+        <section id="adminTabReportes" class="admin-tab-section hidden">
+          <div class="admin-hero-head">
+            <h1 class="admin-page-title">Reportes</h1>
+            <p class="admin-page-sub">Desempeño por plataforma, destinos y operación</p>
+          </div>
+
+          <!-- Resumen operativo -->
+          <div class="admin-card">
+            <div class="admin-card-head">
+              <h2>Resumen operativo</h2>
+            </div>
+            <div class="admin-ops-grid">
+              <div class="admin-op-box">
+                <small>Finalizados</small>
+                <b id="repTotalFinalizados">0</b>
+              </div>
+              <div class="admin-op-box">
+                <small>En curso / Solicitados</small>
+                <b id="repTotalEnCurso">0</b>
+              </div>
+              <div class="admin-op-box">
+                <small>Cancelados</small>
+                <b id="repTotalCancelados">0</b>
+              </div>
+              <div class="admin-op-box">
+                <small>Tarifa promedio</small>
+                <b id="repTarifaPromedio">$ 0</b>
+              </div>
+            </div>
+          </div>
+
+          <!-- Viajes e ingresos por plataforma -->
+          <div class="admin-card">
+            <div class="admin-card-head">
+              <h2>Viajes e ingresos por plataforma</h2>
+            </div>
+            <div id="adminRepPlataformas" class="admin-rep-list"></div>
+          </div>
+
+          <!-- Destinos más pedidos Top 5 -->
+          <div class="admin-card">
+            <div class="admin-card-head">
+              <h2>Destinos más pedidos (Top 5)</h2>
+            </div>
+            <div id="adminRepDestinos" class="admin-rep-list"></div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Barra de navegación inferior exclusiva del Administrador -->
+      <nav id="adminBottomNav" class="admin-bottom-nav">
+        <button type="button" class="admin-nav-btn active" data-admin-tab="panel" onclick="ADMIN.irATab('panel')">
+          <span class="nav-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+              <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+              <rect x="14" y="14" width="7" height="7" rx="1.5"/>
+              <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+            </svg>
+          </span>
+          <span class="nav-lbl">Panel</span>
+        </button>
+
+        <button type="button" class="admin-nav-btn" data-admin-tab="usuarios" onclick="ADMIN.irATab('usuarios')">
+          <span class="nav-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </span>
+          <span class="nav-lbl">Usuarios</span>
+        </button>
+
+        <button type="button" class="admin-nav-btn" data-admin-tab="comision" onclick="ADMIN.irATab('comision')">
+          <span class="nav-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="5" x2="5" y2="19"/>
+              <circle cx="6.5" cy="6.5" r="2.5"/>
+              <circle cx="17.5" cy="17.5" r="2.5"/>
+            </svg>
+          </span>
+          <span class="nav-lbl">Comisión</span>
+        </button>
+
+        <button type="button" class="admin-nav-btn" data-admin-tab="reportes" onclick="ADMIN.irATab('reportes')">
+          <span class="nav-ico" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"/>
+              <line x1="12" y1="20" x2="12" y2="4"/>
+              <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+          </span>
+          <span class="nav-lbl">Reportes</span>
+        </button>
+      </nav>
+
+      <!-- Modal Perfil del Administrador y Aspectos Legales -->
+      <div id="adminPerfilOverlay" class="admin-modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="adminPerfilModalTitle">
+        <div class="admin-modal-sheet">
+          <div class="admin-modal-head">
+            <div>
+              <h2 id="adminPerfilModalTitle">Perfil del Administrador y Aspectos Legales</h2>
+              <span id="adminPerfilRolBadge" class="admin-badge-soft">Administrador UniX (ID #1)</span>
+            </div>
+            <button type="button" id="btnCerrarPerfilAdmin" class="admin-modal-close" onclick="ADMIN.cerrarPerfilAdmin()" aria-label="Cerrar perfil">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="admin-modal-body">
+            <div class="admin-card admin-profile-card">
+              <div class="admin-card-head">
+                <h3>Datos de la cuenta administrativa</h3>
+              </div>
+              <div class="admin-profile-form">
+                <label class="admin-field-label" for="adminPerfilNombre">Nombre completo</label>
+                <input type="text" id="adminPerfilNombre" class="admin-field-input" placeholder="Nombre del administrador">
+
+                <label class="admin-field-label" for="adminPerfilCorreo">Correo electrónico (no editable)</label>
+                <input type="email" id="adminPerfilCorreo" class="admin-field-input readonly" readonly>
+
+                <div class="admin-field-row">
+                  <div>
+                    <label class="admin-field-label" for="adminPerfilTelefono">Teléfono</label>
+                    <input type="tel" id="adminPerfilTelefono" class="admin-field-input" placeholder="3000000000">
+                  </div>
+                  <div>
+                    <label class="admin-field-label" for="adminPerfilNacimiento">Fecha de nacimiento</label>
+                    <input type="date" id="adminPerfilNacimiento" class="admin-field-input">
+                  </div>
+                </div>
+
+                <button type="button" id="btnGuardarPerfilAdmin" class="admin-btn-primary" onclick="ADMIN.guardarPerfilAdmin()">
+                  Guardar cambios
+                </button>
+                <div id="adminPerfilNotice" class="admin-notice hidden"></div>
+              </div>
+            </div>
+
+            <div class="admin-card admin-legal-card">
+              <div class="admin-card-head">
+                <h3>Marco Legal, Privacidad y Términos de Administración</h3>
+              </div>
+              <div class="admin-legal-list">
+                <div class="admin-legal-item">
+                  <b>1. Protección de Datos Personales (Ley 1581 de 2012 - Habeas Data)</b>
+                  <p>Compromiso de confidencialidad sobre la información de los usuarios y minimización de datos en registros contables, garantizando la anonimización de trayectos individuales en la liquidación de comisiones.</p>
+                </div>
+                <div class="admin-legal-item">
+                  <b>2. Alcance de la Administración</b>
+                  <p>Trazabilidad de cambios de tasa de comisión (<code>ConfiguracionComision</code>), auditoría de estados de cuenta (<code>ACTIVO</code> / <code>INACTIVO</code>) y uso exclusivo de estadísticas agregadas por barrio y plataforma.</p>
+                </div>
+                <div class="admin-legal-item">
+                  <b>3. Propiedad Intelectual y Marcas</b>
+                  <p>Uso identificativo y comparativo de proveedores externos (<code>Uber</code>, <code>DiDi</code>, <code>inDrive</code>) conforme a las normas de leal competencia e información al consumidor.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /adminAppView -->
   </div>
 
   <!-- ============ OVERLAY: SELECTOR DE DESTINOS ============ -->
@@ -1251,6 +1624,7 @@
   <script src="js/ui.js"></script>
   <script src="js/flows.js"></script>
   <script src="js/viaje.js"></script>
+  <script src="js/admin.js"></script>
   <script src="js/boot.js"></script>
 
 </body>

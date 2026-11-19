@@ -137,9 +137,17 @@ const AUTH = (() => {
     }
 
     if (api.ok && api.data && typeof api.data.id_usuario === 'number') {
-      const g = await guardarLocal(api.data.nombre, email, pass, api.data.id_usuario, 'aws_rds');
+      const idRol = Number(
+        api.data.id_rol != null
+          ? api.data.id_rol
+          : (api.data.rol && api.data.rol.id_rol != null ? api.data.rol.id_rol : 1)
+      );
+      const estadoUsr = String(api.data.estado || 'ACTIVO').toUpperCase();
+      const g = await guardarLocal(api.data.nombre, email, pass, api.data.id_usuario, 'aws_rds', idRol, estadoUsr);
       const sesionObj = {
         id_usuario: g.id_usuario,
+        id_rol: idRol,
+        estado: estadoUsr,
         email: g.email,
         nombre: g.nombre,
         telefono: api.data.telefono || '',
@@ -175,7 +183,9 @@ const AUTH = (() => {
       nombre: cambios.nombre != null ? String(cambios.nombre).trim() : s.nombre,
       telefono: cambios.telefono !== undefined ? (cambios.telefono || '') : (s.telefono || ''),
       fecha_nacimiento: cambios.fecha_nacimiento !== undefined ? (cambios.fecha_nacimiento ? String(cambios.fecha_nacimiento).slice(0, 10) : '') : (s.fecha_nacimiento || ''),
-      desde: cambios.fecha_registro ? String(cambios.fecha_registro) : s.desde
+      desde: cambios.fecha_registro ? String(cambios.fecha_registro) : s.desde,
+      id_rol: cambios.id_rol != null ? Number(cambios.id_rol) : (s.id_rol || 1),
+      estado: cambios.estado ? String(cambios.estado).toUpperCase() : (s.estado || 'ACTIVO')
     });
     escribir(K_SES, nueva);
     if (nueva.email) {
@@ -221,10 +231,12 @@ const AUTH = (() => {
   }
 
   /* Guarda la cuenta también en el dispositivo: permite ingresar sin conexión. */
-  async function guardarLocal(nombre, email, pass, idUsuario = 1, origen = 'aws_rds') {
+  async function guardarLocal(nombre, email, pass, idUsuario = 1, origen = 'aws_rds', idRol = 1, estado = 'ACTIVO') {
     const s = salt();
     const u = {
       id_usuario: idUsuario || 1,
+      id_rol: Number(idRol) || 1,
+      estado: String(estado || 'ACTIVO').toUpperCase(),
       email: mail(email),
       nombre: (nombre || '').trim() || mail(email).split('@')[0],
       salt: s,
