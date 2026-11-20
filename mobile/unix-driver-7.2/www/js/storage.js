@@ -43,5 +43,13 @@ const STORE = (() => {
     try { localStorage.removeItem(clave); } catch (_) {}
   }
 
-  return { getJSON, setJSON, remove, motor };
+  function limpiarHistorialEnMemoria() {
+    try {
+      if (typeof window !== 'undefined' && typeof window.limpiarHistorialEnMemoria === 'function') {
+        window.limpiarHistorialEnMemoria();
+      }
+    } catch (_) {}
+  }
+
+  return { getJSON, setJSON, remove, motor, limpiarHistorialEnMemoria };
 })();

@@ -96,6 +96,15 @@ w.fetch = async (url, opts = {}) => {
       id_rol: usr.id_rol || 1, estado: usr.estado || 'ACTIVO'
     }) };
   }
+  const mViajesUsr = u.match(/\/viajes\/usuario\/(\d+)$/);
+  if (mViajesUsr) {
+    const id = Number(mViajesUsr[1]);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => mockViajes.filter(v => v.oferta && v.oferta.busqueda && Number(v.oferta.busqueda.id_usuario) === id)
+    };
+  }
   if (/\/viajes\/(\?|$)/.test(u)) {
     return { ok: true, status: 200, json: async () => mockViajes };
   }
@@ -268,6 +277,61 @@ w.eval("ADMIN.irATab('reportes')"); await new Promise(r => setTimeout(r, 40));
 t('pestaña Reportes muestra plataformas, Top destinos y resumen operativo', /Uber/.test($('adminRepPlataformas').textContent) && /Bocagrande/.test($('adminRepDestinos').textContent) && $('repTotalFinalizados').textContent === '1');
 click($('btnAdminLogout')); await new Promise(r => setTimeout(r, 60));
 t('cerrar sesión desde Admin oculta #adminAppView y regresa a Login', $('adminAppView').classList.contains('hidden') && !d.body.classList.contains('admin-mode') && $('screen0').classList.contains('active'));
+
+// 8) Aislamiento de historial de viajes por id_usuario (sin mezcla entre cuentas ni clave legacy v2)
+t('claveHistorialUsuario aísla por id_usuario y devuelve null sin sesión',
+  w.eval('claveHistorialUsuario(1)') === 'unixdriver.historial.v3.1' &&
+  w.eval('claveHistorialUsuario(null)') === null &&
+  w.eval('typeof STORE.limpiarHistorialEnMemoria') === 'function');
+w.localStorage.setItem('unixdriver.historial.v2', JSON.stringify([{ id: 'V-LEGACY', destino: 'Contaminado', estado: 'pagado', tarifa: 9999 }]));
+t('sin usuario autenticado guardarEnHistorial no persiste y leerHistorial devuelve []',
+  w.eval("guardarEnHistorial({ id: 'V-ANON', destino: 'Fantasma', estado: 'pagado', tarifa: 5000 })").length === 0 &&
+  w.eval('leerHistorial()').length === 0 &&
+  w.localStorage.getItem('unixdriver.historial.v2') === null);
+
+// Iniciar sesión con usuario #1 (Luis, tiene 2 viajes en backend: Bocagrande y Crespo)
+$('aEmail').value = 'luis@correo.com'; $('aPass').value = 'clave123'; click($('authBtn'));
+await new Promise(r => setTimeout(r, 220));
+w.eval('UI.goToScreen(10)'); await new Promise(r => setTimeout(r, 120));
+const histLuisStorage = JSON.parse(w.localStorage.getItem('unixdriver.historial.v3.1') || '[]');
+t('usuario #1 carga estrictamente sus 2 viajes en unixdriver.historial.v3.1 sin clave legacy',
+  histLuisStorage.length === 2 && w.localStorage.getItem('unixdriver.historial.v2') === null &&
+  /Bocagrande/.test($('histList').textContent) && !/Contaminado/.test($('histList').textContent));
+t('contador de perfil y último viaje reflejan los viajes del usuario #1', $('cuentaViajes').textContent === '2');
+w.eval('UI.goToScreen(11)'); await new Promise(r => setTimeout(r, 80));
+t('en pestaña Viaje #lastTripBox muestra el último viaje del usuario #1',
+  !!$('lastTripBox') && !$('lastTripBox').classList.contains('hidden') && /Bocagrande/.test($('lastTripBox').textContent));
+
+// Cerrar sesión: limpia memoria, DOM de historial y oculta #lastTripBox
+w.eval('AUTH.cerrarSesion()'); await new Promise(r => setTimeout(r, 60));
+t('AUTH.cerrarSesion limpia sesión, historial en memoria, DOM y oculta #lastTripBox',
+  !w.localStorage.getItem('unixdriver.sesion.v2') &&
+  w.eval('leerHistorial()').length === 0 &&
+  !/Bocagrande/.test($('histList').textContent) &&
+  $('cuentaViajes').textContent === '0' &&
+  (!$('lastTripBox') || $('lastTripBox').classList.contains('hidden')));
+
+// Registrar e iniciar sesión con usuario #2 (María, 0 viajes en backend) con dato viejo local para comprobar NO merge
+w.localStorage.setItem('unixdriver.historial.v3.2', JSON.stringify([{ id: 'V-STALE', destino: 'ViajeViejoLocal', estado: 'pagado', tarifa: 7000 }]));
+w.localStorage.setItem('unixdriver.historial.v2', JSON.stringify([{ id: 'V-LEGACY2', destino: 'Contaminado2', estado: 'pagado', tarifa: 8000 }]));
+w.eval("AUTH_UI.tab('registro')"); await new Promise(r => setTimeout(r, 40));
+$('rNombre').value = 'Maria Gomez'; $('rEmail').value = 'maria@correo.com'; $('rPass').value = 'maria123'; $('rPass2').value = 'maria123';
+click($('regBtn')); await new Promise(r => setTimeout(r, 200));
+w.eval("AUTH_UI.tab('login')"); await new Promise(r => setTimeout(r, 40));
+$('aEmail').value = 'maria@correo.com'; $('aPass').value = 'maria123'; click($('authBtn'));
+await new Promise(r => setTimeout(r, 220));
+w.eval('UI.goToScreen(10)'); await new Promise(r => setTimeout(r, 120));
+const histMariaStorage = JSON.parse(w.localStorage.getItem('unixdriver.historial.v3.2') || '[]');
+t('usuario #2 reemplaza caché estrictamente con backend (0 viajes, sin merge ni viajes de usuario #1)',
+  histMariaStorage.length === 0 &&
+  w.localStorage.getItem('unixdriver.historial.v2') === null &&
+  !/Bocagrande|ViajeViejoLocal|Contaminado2/.test($('histList').textContent) &&
+  $('cuentaViajes').textContent === '0');
+w.eval('UI.goToScreen(11)'); await new Promise(r => setTimeout(r, 80));
+t('usuario #2 sin viajes mantiene #lastTripBox oculto',
+  !!$('lastTripBox') && $('lastTripBox').classList.contains('hidden'));
+t('historial aislado del usuario #1 se conserva intacto en su propia clave v3.1',
+  JSON.parse(w.localStorage.getItem('unixdriver.historial.v3.1') || '[]').length === 2);
 
 t('errores JS: ' + errs.length, errs.length === 0, errs.slice(0,2).join(' | '));
 console.log(`TOTAL ${pass}/${pass+fail} PASS`);
