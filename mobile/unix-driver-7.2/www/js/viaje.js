@@ -29,7 +29,11 @@ const VIAJE = (() => {
 
   function ultimoFinalizado() {
     try {
-      const h = leerHistorial() || [];
+      const s = (typeof AUTH !== 'undefined' && typeof AUTH.sesionActual === 'function')
+        ? AUTH.sesionActual()
+        : ((typeof AUTH !== 'undefined' && AUTH.sesion) ? AUTH.sesion() : null);
+      if (!s || s.invitado || !s.id_usuario) return null;
+      const h = leerHistorial(s.id_usuario) || [];
       return h.find(x => x.estado === 'pagado' || x.estado === 'finalizado') || null;
     } catch (_) { return null; }
   }
@@ -75,14 +79,16 @@ const VIAJE = (() => {
   }
 
   function sinViaje() {
-    const s = (typeof AUTH !== 'undefined' && AUTH.sesion) ? AUTH.sesion() : null;
-    const fin = (s && (s.email || s.invitado || s.nombre)) ? ultimoFinalizado() : null;
+    const s = (typeof AUTH !== 'undefined' && typeof AUTH.sesionActual === 'function')
+      ? AUTH.sesionActual()
+      : ((typeof AUTH !== 'undefined' && AUTH.sesion) ? AUTH.sesion() : null);
+    const fin = (s && s.id_usuario && !s.invitado) ? ultimoFinalizado() : null;
     const ultimo = fin ? `<div id="lastTripBox" class="vj-card vj-ultimo">
         <small>ÚLTIMO VIAJE · ${esc(fin.fecha || '')}</small>
         <div class="vj-row"><span>Destino</span><b>${esc(fin.destino || '—')}</b></div>
         <div class="vj-row"><span>Distancia</span><b>${fin.km != null ? kmTexto(fin.km) : '—'}</b></div>
         <div class="vj-row"><span>Precio</span><b>${money(fin.tarifa)}</b></div>
-      </div>` : '';
+      </div>` : '<div id="lastTripBox" class="vj-card vj-ultimo hidden"></div>';
     return `<div class="vj-empty">
         <div class="vj-empty-ico">${SVG_COMPASS}</div>
         <h2>No tienes ningún viaje activo</h2>

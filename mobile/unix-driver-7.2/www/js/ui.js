@@ -113,68 +113,141 @@ const UI = (() => {
   }
 
 
-  /* ---------- Historial (Sincronizado con GET /viajes/usuario/{id} en AWS RDS) ---------- */
-  let sincronizandoHistorial = false;
+  /* ---------- Historial (Fuente única de verdad: GET /viajes/usuario/{id} en AWS RDS) ---------- */
+  let seqSyncHistorial = 0;
 
-  async function sincronizarHistorialDesdeAws() {
-    if (sincronizandoHistorial) return;
-    if (typeof window === 'undefined' || !window.apiService || typeof window.apiService.obtenerHistorialViajes !== 'function') return;
-    const s = (typeof AUTH !== 'undefined' && AUTH.sesion) ? AUTH.sesion() : null;
-    const idUsuario = (s && s.id_usuario) ? Number(s.id_usuario) : null;
-    if (!idUsuario) return;
+  function obtenerIdUsuarioSesionActiva() {
+    try {
+      const s = (typeof AUTH !== 'undefined' && typeof AUTH.sesionActual === 'function')
+        ? AUTH.sesionActual()
+        : ((typeof AUTH !== 'undefined' && AUTH.sesion) ? AUTH.sesion() : null);
+      if (!s || s.invitado || s.id_usuario == null) return null;
+      const id = Number(s.id_usuario);
+      return (Number.isFinite(id) && id > 0) ? id : null;
+    } catch (_) {
+      return null;
+    }
+  }
 
-    sincronizandoHistorial = true;
+  function limpiarHistorialDOM() {
+    const kpis = document.getElementById('histKpis');
+    if (kpis) {
+      kpis.innerHTML = `
+        <div class="zs-card corto"><small>COMPLETADOS</small><b>0</b><span>pagados</span></div>
+        <div class="zs-card largo"><small>CANCELADOS</small><b>0</b><span>con motivo</span></div>
+        <div class="zs-card medio"><small>FACTURADO</small><b style="font-size:11.5px;">${money(0)}</b><span>COP</span></div>`;
+    }
+    const cont = document.getElementById('histList');
+    if (cont) {
+      cont.innerHTML = '<div class="hist-empty">Todavía no hay viajes aquí.<br>Cuando completes o canceles un viaje aparecerá en esta lista.</div>';
+    }
+    const elVj = document.getElementById('cuentaViajes');
+    if (elVj) elVj.textContent = '0';
+    const lt = document.getElementById('lastTripBox');
+    if (lt) lt.classList.add('hidden');
+  }
+
+  function actualizarResumenHistorialUsuario(lista) {
+    const arr = Array.isArray(lista) ? lista : [];
+    const elVj = document.getElementById('cuentaViajes');
+    if (elVj) elVj.textContent = String(arr.length);
+    if (typeof VIAJE !== 'undefined' && typeof VIAJE.render === 'function' && !VIAJE.activo) {
+      try { VIAJE.render(); } catch (_) {}
+    }
+    const ultimo = arr.find(x => x && (x.estado === 'pagado' || x.estado === 'finalizado')) || null;
+    const lt = document.getElementById('lastTripBox');
+    if (lt) {
+      lt.classList.toggle('hidden', !ultimo || Number(pantalla) !== 11);
+    }
+    if (Number(pantalla) !== 11) {
+      ocultarTarjetasViajeAjenas();
+    }
+  }
+
+  function mapearViajeRemoto(vr, idUsuario) {
+    const of = vr.oferta || {};
+    const busq = of.busqueda || {};
+    const plat = (of.plataforma && of.plataforma.nombre) || 'Uber';
+    const cond = (of.conductor && of.conductor.nombre) || 'Conductor asignado';
+    const vehTipo = (of.vehiculo && String(of.vehiculo.tipo || '').toLowerCase().includes('moto')) ? 'moto' : 'carro';
+    const tarifaNum = Number(vr.precio_final != null ? vr.precio_final : (of.precio_estimado || 0));
+    const estadoUpper = String(vr.estado || '').toUpperCase();
+    const estadoLocal = estadoUpper === 'CANCELADO'
+      ? 'cancelado'
+      : (estadoUpper === 'COMPLETADO' ? 'pagado' : 'finalizado');
+
+    return {
+      id: 'V-' + vr.id_viaje,
+      id_usuario: Number(idUsuario),
+      fecha: vr.fecha_hora_inicio
+        ? new Date(vr.fecha_hora_inicio).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+        : ahoraTexto(),
+      origen: busq.origen || 'Cartagena',
+      destino: busq.destino || ('Viaje #' + vr.id_viaje + ' (' + plat + ')'),
+      vehiculo: vehTipo,
+      tarifa: tarifaNum,
+      comision: estadoLocal === 'cancelado' ? 0 : Math.round(tarifaNum * COMISION_PCT),
+      estado: estadoLocal,
+      conductor: cond,
+      plataforma: plat,
+      km: of.distancia != null ? Number(of.distancia) : null,
+      duracionMin: of.tiempo_estimado != null ? Number(of.tiempo_estimado) : null
+    };
+  }
+
+  async function sincronizarHistorialDesdeAws(idUsuarioParam) {
+    const idUsuario = (idUsuarioParam != null && Number(idUsuarioParam) > 0)
+      ? Number(idUsuarioParam)
+      : obtenerIdUsuarioSesionActiva();
+    if (!idUsuario) {
+      if (typeof STORE !== 'undefined' && typeof STORE.limpiarHistorialEnMemoria === 'function') {
+        STORE.limpiarHistorialEnMemoria();
+      } else if (typeof limpiarHistorialEnMemoria === 'function') {
+        limpiarHistorialEnMemoria();
+      }
+      limpiarHistorialDOM();
+      return [];
+    }
+    if (typeof window === 'undefined' || !window.apiService || typeof window.apiService.obtenerHistorialViajes !== 'function') {
+      pintarHistorialDOM();
+      return leerHistorial(idUsuario);
+    }
+
+    const reqSeq = ++seqSyncHistorial;
     try {
       const viajesRemotos = await window.apiService.obtenerHistorialViajes(idUsuario);
-      if (!Array.isArray(viajesRemotos) || !viajesRemotos.length) return;
+      const idActual = obtenerIdUsuarioSesionActiva();
+      if (reqSeq !== seqSyncHistorial || !idActual || idActual !== idUsuario) {
+        return [];
+      }
+      if (!Array.isArray(viajesRemotos)) {
+        return leerHistorial(idUsuario);
+      }
 
-      const local = leerHistorial();
-      let huboCambios = false;
+      const normalizados = viajesRemotos
+        .filter(vr => vr && vr.id_viaje != null)
+        .map(vr => mapearViajeRemoto(vr, idUsuario));
 
-      viajesRemotos.forEach(vr => {
-        if (!vr || !vr.id_viaje) return;
-        const idViaje = 'V-' + vr.id_viaje;
-        if (local.some(x => String(x.id) === idViaje || String(x.id) === ('RDS-' + vr.id_viaje))) return;
-
-        const of = vr.oferta || {};
-        const plat = (of.plataforma && of.plataforma.nombre) || 'Uber';
-        const cond = (of.conductor && of.conductor.nombre) || 'Conductor asignado';
-        const vehTipo = (of.vehiculo && String(of.vehiculo.tipo || '').toLowerCase().includes('moto')) ? 'moto' : 'carro';
-        const tarifaNum = Number(vr.precio_final != null ? vr.precio_final : (of.precio_estimado || 0));
-        const estadoUpper = String(vr.estado || '').toUpperCase();
-        const estadoLocal = estadoUpper === 'CANCELADO'
-          ? 'cancelado'
-          : (estadoUpper === 'COMPLETADO' ? 'pagado' : 'finalizado');
-
-        local.push({
-          id: idViaje,
-          fecha: vr.fecha_hora_inicio ? new Date(vr.fecha_hora_inicio).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ahoraTexto(),
-          origen: 'Cartagena',
-          destino: 'Viaje #' + vr.id_viaje + ' (' + plat + ')',
-          vehiculo: vehTipo,
-          tarifa: tarifaNum,
-          comision: estadoLocal === 'cancelado' ? 0 : Math.round(tarifaNum * COMISION_PCT),
-          estado: estadoLocal,
-          conductor: cond,
-          plataforma: plat,
-          km: of.distancia != null ? Number(of.distancia) : null,
-          duracionMin: of.tiempo_estimado != null ? Number(of.tiempo_estimado) : null
-        });
-        huboCambios = true;
-      });
-
-      if (huboCambios) {
-        try { localStorage.setItem(LS_HIST, JSON.stringify(local.slice(0, 300))); } catch (_) {}
+      // Reemplazo estricto sin merge con viajes locales de otros usuarios ni caché global
+      reemplazarHistorial(normalizados, idUsuario);
+      pintarHistorialDOM();
+      return normalizados;
+    } catch (_) {
+      const idActual = obtenerIdUsuarioSesionActiva();
+      if (reqSeq === seqSyncHistorial && idActual === idUsuario) {
         pintarHistorialDOM();
       }
-    } catch (_) {
-    } finally {
-      sincronizandoHistorial = false;
+      return leerHistorial(idUsuario);
     }
   }
 
   function pintarHistorialDOM() {
-    const lista = leerHistorial();
+    const idUsuario = obtenerIdUsuarioSesionActiva();
+    if (!idUsuario) {
+      limpiarHistorialDOM();
+      return;
+    }
+    const lista = leerHistorial(idUsuario);
     const filtro = (document.getElementById('histFiltroEstado') || {}).value || 'todos';
     const vis = lista.filter(v => filtro === 'todos' ? true : v.estado === filtro);
     const pagados = lista.filter(v => v.estado === 'pagado');
@@ -188,33 +261,46 @@ const UI = (() => {
         <div class="zs-card medio"><small>FACTURADO</small><b style="font-size:11.5px;">${money(total)}</b><span>COP</span></div>`;
     }
     const cont = document.getElementById('histList');
-    if (!cont) return;
-    if (!vis.length) {
-      cont.innerHTML = '<div class="hist-empty">Todavía no hay viajes aquí.<br>Cuando completes o canceles un viaje aparecerá en esta lista.</div>';
-      return;
+    if (cont) {
+      if (!vis.length) {
+        cont.innerHTML = '<div class="hist-empty">Todavía no hay viajes aquí.<br>Cuando completes o canceles un viaje aparecerá en esta lista.</div>';
+      } else {
+        cont.innerHTML = vis.map(v => `
+          <div class="hist-item">
+            <header>
+              <b>${v.origen ? v.origen + ' → ' : ''}${v.destino || '—'}</b>
+              <span class="tag ${v.estado}">${v.estado === 'pagado' ? 'Pagado' : v.estado === 'cancelado' ? 'Cancelado' : 'Finalizado'}</span>
+            </header>
+            <div class="h-row"><span>${v.fecha} · ${vehLabel(v.vehiculo)}${v.km ? ' · ' + v.km + ' km' : ''}${v.duracionMin ? ' · ' + v.duracionMin + ' min' : ''}</span><span class="h-price">${money(v.tarifa)}</span></div>
+            ${v.conductor ? `<div class="h-row"><span>${v.conductor} · ${v.plataforma || '—'}</span><span>${v.comision ? 'comisión ' + money(v.comision) : ''}</span></div>` : ''}
+            ${v.motivo ? `<div class="hist-motivo">Motivo: ${v.motivo}</div>` : ''}
+          </div>`).join('');
+      }
     }
-    cont.innerHTML = vis.map(v => `
-      <div class="hist-item">
-        <header>
-          <b>${v.origen ? v.origen + ' → ' : ''}${v.destino || '—'}</b>
-          <span class="tag ${v.estado}">${v.estado === 'pagado' ? 'Pagado' : v.estado === 'cancelado' ? 'Cancelado' : 'Finalizado'}</span>
-        </header>
-        <div class="h-row"><span>${v.fecha} · ${vehLabel(v.vehiculo)}${v.km ? ' · ' + v.km + ' km' : ''}${v.duracionMin ? ' · ' + v.duracionMin + ' min' : ''}</span><span class="h-price">${money(v.tarifa)}</span></div>
-        ${v.conductor ? `<div class="h-row"><span>${v.conductor} · ${v.plataforma || '—'}</span><span>${v.comision ? 'comisión ' + money(v.comision) : ''}</span></div>` : ''}
-        ${v.motivo ? `<div class="hist-motivo">Motivo: ${v.motivo}</div>` : ''}
-      </div>`).join('');
+    actualizarResumenHistorialUsuario(lista);
   }
 
   function renderHistorial() {
+    const idUsuario = obtenerIdUsuarioSesionActiva();
+    if (!idUsuario) {
+      if (typeof STORE !== 'undefined' && typeof STORE.limpiarHistorialEnMemoria === 'function') {
+        STORE.limpiarHistorialEnMemoria();
+      } else if (typeof limpiarHistorialEnMemoria === 'function') {
+        limpiarHistorialEnMemoria();
+      }
+      limpiarHistorialDOM();
+      return;
+    }
     pintarHistorialDOM();
-    sincronizarHistorialDesdeAws();
+    sincronizarHistorialDesdeAws(idUsuario);
   }
 
   function limpiarHistorial() {
-    if (!leerHistorial().length) { setNotice('searchNotice', 'No hay viajes guardados para borrar.'); return; }
+    const idUsuario = obtenerIdUsuarioSesionActiva();
+    if (!idUsuario || !leerHistorial(idUsuario).length) { setNotice('searchNotice', 'No hay viajes guardados para borrar.'); return; }
     if (!window.confirm('¿Borrar todo el historial guardado en este dispositivo?')) return;
-    borrarHistorial();
-    renderHistorial();
+    borrarHistorial(idUsuario);
+    pintarHistorialDOM();
   }
 
   /* ---------- Cuenta / Perfil de Pantalla Completa (DSS03P) ---------- */
@@ -243,7 +329,8 @@ const UI = (() => {
     const elSes = document.getElementById('cuentaSesion');
     if (elSes) elSes.textContent = fechaDesde;
     const elVj = document.getElementById('cuentaViajes');
-    if (elVj) elVj.textContent = leerHistorial().length;
+    const idUsrActivo = obtenerIdUsuarioSesionActiva();
+    if (elVj) elVj.textContent = String(idUsrActivo ? leerHistorial(idUsrActivo).length : 0);
     const elAv = document.getElementById('perfilAvatar');
     if (elAv) elAv.textContent = calcularIniciales(nombre);
 
@@ -303,6 +390,7 @@ const UI = (() => {
 
     if (s && s.id_usuario && !s.invitado) {
       sincronizarPerfilDesdeAws(s.id_usuario);
+      sincronizarHistorialDesdeAws(s.id_usuario);
     }
   }
 
@@ -507,7 +595,7 @@ const UI = (() => {
   }
 
   return { goToScreen, atras, mostrar, ocultar, setNotice, actualizarBadgeUsuario, renderFrecuentes,
-    renderHistorial, limpiarHistorial, abrirCuenta, cerrarCuenta, guardarPerfil, limpiarUIviaje, reloj,
+    renderHistorial, sincronizarHistorialDesdeAws, limpiarHistorialDOM, limpiarHistorial, abrirCuenta, cerrarCuenta, guardarPerfil, limpiarUIviaje, reloj,
     abrirMasModal, cerrarMasModal, cerrarSesion,
     get pantalla() { return pantalla; } };
 })();

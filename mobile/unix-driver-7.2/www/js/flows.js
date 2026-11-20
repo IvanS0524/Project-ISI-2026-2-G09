@@ -85,13 +85,18 @@ const FLOW = (() => {
   }
   setTimeout(sincronizarComisionVigente, 400);
 
-  /* Helper para obtener el id_usuario autenticado en RDS (o 1 por defecto) */
+  /* Helper para obtener el id_usuario autenticado en RDS (null si no hay sesión real) */
   function obtenerIdUsuarioActivo() {
     try {
-      const s = (typeof AUTH !== 'undefined' && AUTH.sesion) ? AUTH.sesion() : null;
-      if (s && s.id_usuario) return Number(s.id_usuario);
+      const s = (typeof AUTH !== 'undefined' && typeof AUTH.sesionActual === 'function')
+        ? AUTH.sesionActual()
+        : ((typeof AUTH !== 'undefined' && AUTH.sesion) ? AUTH.sesion() : null);
+      if (s && s.id_usuario != null && !s.invitado) {
+        const id = Number(s.id_usuario);
+        if (Number.isFinite(id) && id > 0) return id;
+      }
     } catch (_) { }
-    return 1;
+    return null;
   }
 
   /* Helper para sincronizar el estado del viaje en AWS RDS (PATCH /viajes/{id}/estado) */
@@ -594,28 +599,32 @@ const FLOW = (() => {
     trip.pago = { metodo, monto: tarifa, comision, neto: tarifa - comision, folio: recibo };
     trip.estado = 'pagado';
 
-    guardarEnHistorial({
-      id: trip.id_viaje ? ('V-' + trip.id_viaje) : ('V-' + Date.now().toString(36).toUpperCase()),
-      fecha: ahoraTexto(),
-      origen: nombreOrigen(),
-      origen_direccion: trip.origen.direccion || '',
-      origen_lat: trip.origen.lat,
-      origen_lon: trip.origen.lon,
-      destino: nombreDestino(),
-      destinoId: trip.destino.id,
-      categoria: trip.destino.categoria,
-      vehiculo: trip.vehiculo,
-      tarifa, comision,
-      estado: 'pagado',
-      conductor: trip.oferta.conductor,
-      plataforma: trip.oferta.plataforma,
-      metodo,
-      folio: recibo,
-      motivo: null,
-      km: trip.rutaKm,
-      duracionMin: trip.rutaMin || null,
-      rutaFuente: trip.rutaFuente || null
-    });
+    const idUsuarioActivo = obtenerIdUsuarioActivo();
+    if (idUsuarioActivo) {
+      guardarEnHistorial({
+        id: trip.id_viaje ? ('V-' + trip.id_viaje) : ('V-' + Date.now().toString(36).toUpperCase()),
+        id_usuario: idUsuarioActivo,
+        fecha: ahoraTexto(),
+        origen: nombreOrigen(),
+        origen_direccion: trip.origen.direccion || '',
+        origen_lat: trip.origen.lat,
+        origen_lon: trip.origen.lon,
+        destino: nombreDestino(),
+        destinoId: trip.destino.id,
+        categoria: trip.destino.categoria,
+        vehiculo: trip.vehiculo,
+        tarifa, comision,
+        estado: 'pagado',
+        conductor: trip.oferta.conductor,
+        plataforma: trip.oferta.plataforma,
+        metodo,
+        folio: recibo,
+        motivo: null,
+        km: trip.rutaKm,
+        duracionMin: trip.rutaMin || null,
+        rutaFuente: trip.rutaFuente || null
+      }, idUsuarioActivo);
+    }
 
     setText('successText', 'Tu viaje a ' + nombreDestino() + ' se completó y el pago quedó registrado.');
     const box = $('receiptBox');
@@ -703,30 +712,34 @@ const FLOW = (() => {
       ? 'Otro motivo: ' + ($('cancelOtro').value.trim() || 'sin detalle')
       : (motivoSel || 'Sin motivo indicado');
 
-    guardarEnHistorial({
-      id: trip.id_viaje ? ('V-' + trip.id_viaje) : ('V-' + Date.now().toString(36).toUpperCase()),
-      fecha: ahoraTexto(),
-      origen: nombreOrigen(),
-      origen_direccion: trip.origen ? (trip.origen.direccion || '') : '',
-      origen_lat: trip.origen ? trip.origen.lat : null,
-      origen_lon: trip.origen ? trip.origen.lon : null,
-      destino: nombreDestino(),
-      destinoId: trip.destino ? trip.destino.id : null,
-      categoria: trip.destino ? trip.destino.categoria : null,
-      vehiculo: trip.vehiculo,
-      tarifa: trip.tarifa,
-      comision: 0,
-      estado: 'cancelado',
-      conductor: trip.oferta ? trip.oferta.conductor : null,
-      plataforma: trip.oferta ? trip.oferta.plataforma : null,
-      metodo: null,
-      folio: null,
-      motivo: motivoTexto,
-      estadoAnterior: s,
-      km: trip.rutaKm,
-      duracionMin: trip.rutaMin || null,
-      rutaFuente: trip.rutaFuente || null
-    });
+    const idUsuarioActivo = obtenerIdUsuarioActivo();
+    if (idUsuarioActivo) {
+      guardarEnHistorial({
+        id: trip.id_viaje ? ('V-' + trip.id_viaje) : ('V-' + Date.now().toString(36).toUpperCase()),
+        id_usuario: idUsuarioActivo,
+        fecha: ahoraTexto(),
+        origen: nombreOrigen(),
+        origen_direccion: trip.origen ? (trip.origen.direccion || '') : '',
+        origen_lat: trip.origen ? trip.origen.lat : null,
+        origen_lon: trip.origen ? trip.origen.lon : null,
+        destino: nombreDestino(),
+        destinoId: trip.destino ? trip.destino.id : null,
+        categoria: trip.destino ? trip.destino.categoria : null,
+        vehiculo: trip.vehiculo,
+        tarifa: trip.tarifa,
+        comision: 0,
+        estado: 'cancelado',
+        conductor: trip.oferta ? trip.oferta.conductor : null,
+        plataforma: trip.oferta ? trip.oferta.plataforma : null,
+        metodo: null,
+        folio: null,
+        motivo: motivoTexto,
+        estadoAnterior: s,
+        km: trip.rutaKm,
+        duracionMin: trip.rutaMin || null,
+        rutaFuente: trip.rutaFuente || null
+      }, idUsuarioActivo);
+    }
 
     trip.estado = ESTADOS.CANCELADO;
     UI.ocultar('cancelOverlay');
