@@ -13,7 +13,8 @@ const ORIGEN_SUGERIDO = (window.UNIX_CONFIG && UNIX_CONFIG.origenSugerido) ||
   { nombre: 'Universidad de Cartagena', barrio: 'Zaragocilla', direccion: 'Campus Piedra de Bolívar', lat: 10.401904, lon: -75.508695 };
 
 let COMISION_PCT = 0.10;
-const LS_HIST = 'unixdriver.historial.v2';
+const LS_HIST_LEGACY = 'unixdriver.historial.v2';
+const LS_HIST_PREFIX = 'unixdriver.historial.v3.';
 
 const ESTADOS = {
   INICIAL: 'solicitud_inicial',
@@ -117,35 +118,151 @@ function resetTripState() {
   return { anterior, nuevo: trip.requestId };
 }
 
-/* --- Historial persistente --- */
-function leerHistorial() {
-  try { const v = JSON.parse(localStorage.getItem(LS_HIST) || '[]'); return Array.isArray(v) ? v : []; } catch (_) { return []; }
+/* --- Historial persistente aislado por id_usuario --- */
+let historialMemoria = [];
+let historialMemoriaUsuarioId = null;
+let ultimoViajeMemoria = null;
+
+function limpiarClaveLegacyHistorial() {
+  try {
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(LS_HIST_LEGACY) !== null) {
+      localStorage.removeItem(LS_HIST_LEGACY);
+    }
+  } catch (_) {}
+  try {
+    if (typeof STORE !== 'undefined' && typeof STORE.remove === 'function') {
+      STORE.remove(LS_HIST_LEGACY);
+    }
+  } catch (_) {}
 }
-function guardarEnHistorial(registro) {
-  const lista = leerHistorial();
-  lista.unshift(registro);
-  const recorte = lista.slice(0, 300);
-  try { localStorage.setItem(LS_HIST, JSON.stringify(recorte)); } catch (_) {}
-  try { if (typeof STORE !== 'undefined') STORE.setJSON(LS_HIST, recorte); } catch (_) {}
-  return recorte;
+limpiarClaveLegacyHistorial();
+
+function obtenerIdUsuarioAutenticado() {
+  try {
+    const ses = (typeof AUTH !== 'undefined' && typeof AUTH.sesionActual === 'function')
+      ? AUTH.sesionActual()
+      : ((typeof AUTH !== 'undefined' && typeof AUTH.sesion === 'function') ? AUTH.sesion() : null);
+    if (!ses || ses.invitado || ses.id_usuario == null) return null;
+    const n = Number(ses.id_usuario);
+    return (Number.isFinite(n) && n > 0) ? n : null;
+  } catch (_) {
+    return null;
+  }
 }
-function borrarHistorial() {
-  try { localStorage.removeItem(LS_HIST); } catch (_) {}
-  try { if (typeof STORE !== 'undefined') STORE.remove(LS_HIST); } catch (_) {}
+
+function claveHistorialUsuario(idUsuario) {
+  const idRaw = (idUsuario === undefined) ? obtenerIdUsuarioAutenticado() : idUsuario;
+  if (idRaw == null || idRaw === '') return null;
+  const n = Number(idRaw);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return LS_HIST_PREFIX + n;
+}
+
+function limpiarHistorialEnMemoria() {
+  historialMemoria = [];
+  historialMemoriaUsuarioId = null;
+  ultimoViajeMemoria = null;
+  limpiarTimers();
+  trip = nuevoTrip();
+}
+
+function leerHistorial(idUsuario) {
+  limpiarClaveLegacyHistorial();
+  const id = (idUsuario === undefined) ? obtenerIdUsuarioAutenticado() : idUsuario;
+  const clave = claveHistorialUsuario(id);
+  if (!clave) {
+    historialMemoria = [];
+    historialMemoriaUsuarioId = null;
+    ultimoViajeMemoria = null;
+    return [];
+  }
+  const idNum = Number(id);
+  try {
+    const raw = localStorage.getItem(clave);
+    if (raw != null) {
+      const v = JSON.parse(raw);
+      const lista = Array.isArray(v) ? v : [];
+      historialMemoria = lista;
+      historialMemoriaUsuarioId = idNum;
+      ultimoViajeMemoria = lista.find(x => x && (x.estado === 'pagado' || x.estado === 'finalizado')) || null;
+      return lista.slice();
+    }
+  } catch (_) {}
+  if (historialMemoriaUsuarioId === idNum && Array.isArray(historialMemoria)) {
+    return historialMemoria.slice();
+  }
+  historialMemoria = [];
+  historialMemoriaUsuarioId = idNum;
+  ultimoViajeMemoria = null;
+  return [];
+}
+
+function reemplazarHistorial(lista, idUsuario) {
+  limpiarClaveLegacyHistorial();
+  const id = (idUsuario === undefined) ? obtenerIdUsuarioAutenticado() : idUsuario;
+  const clave = claveHistorialUsuario(id);
+  if (!clave) {
+    historialMemoria = [];
+    historialMemoriaUsuarioId = null;
+    ultimoViajeMemoria = null;
+    return [];
+  }
+  const idNum = Number(id);
+  const recorte = (Array.isArray(lista) ? lista : []).slice(0, 300);
+  historialMemoria = recorte;
+  historialMemoriaUsuarioId = idNum;
+  ultimoViajeMemoria = recorte.find(x => x && (x.estado === 'pagado' || x.estado === 'finalizado')) || null;
+  try { localStorage.setItem(clave, JSON.stringify(recorte)); } catch (_) {}
+  try { if (typeof STORE !== 'undefined' && typeof STORE.setJSON === 'function') STORE.setJSON(clave, recorte); } catch (_) {}
+  return recorte.slice();
+}
+
+function guardarEnHistorial(registro, idUsuario) {
+  limpiarClaveLegacyHistorial();
+  const id = (idUsuario === undefined) ? obtenerIdUsuarioAutenticado() : idUsuario;
+  const clave = claveHistorialUsuario(id);
+  if (!clave || !registro) return [];
+  const idNum = Number(id);
+  const item = Object.assign({}, registro, { id_usuario: idNum });
+  const lista = leerHistorial(idNum).filter(x => !(item.id && x && String(x.id) === String(item.id)));
+  lista.unshift(item);
+  return reemplazarHistorial(lista, idNum);
+}
+
+function borrarHistorial(idUsuario) {
+  limpiarClaveLegacyHistorial();
+  const id = (idUsuario === undefined) ? obtenerIdUsuarioAutenticado() : idUsuario;
+  const clave = claveHistorialUsuario(id);
+  historialMemoria = [];
+  historialMemoriaUsuarioId = null;
+  ultimoViajeMemoria = null;
+  if (!clave) return;
+  try { localStorage.removeItem(clave); } catch (_) {}
+  try { if (typeof STORE !== 'undefined' && typeof STORE.remove === 'function') STORE.remove(clave); } catch (_) {}
 }
 
 async function hidratarPersistencia() {
+  limpiarClaveLegacyHistorial();
   if (typeof STORE === 'undefined') return false;
+  const id = obtenerIdUsuarioAutenticado();
+  const clave = claveHistorialUsuario(id);
+  if (!clave) return false;
   try {
-    const guardado = await STORE.getJSON(LS_HIST, null);
-    if (!Array.isArray(guardado) || !guardado.length) return false;
-    const local = leerHistorial();
-    if (guardado.length > local.length) {
-      localStorage.setItem(LS_HIST, JSON.stringify(guardado.slice(0, 300)));
+    const guardado = await STORE.getJSON(clave, null);
+    if (!Array.isArray(guardado)) return false;
+    const rawLocal = localStorage.getItem(clave);
+    if (rawLocal == null && guardado.length) {
+      reemplazarHistorial(guardado, id);
       return true;
     }
   } catch (_) {}
   return false;
+}
+
+if (typeof window !== 'undefined') {
+  window.claveHistorialUsuario = claveHistorialUsuario;
+  window.limpiarHistorialEnMemoria = limpiarHistorialEnMemoria;
+  window.reemplazarHistorial = reemplazarHistorial;
 }
 
 /* --- Dinero y formato --- */

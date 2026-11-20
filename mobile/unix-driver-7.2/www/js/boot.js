@@ -47,7 +47,7 @@ const AUTH_UI = (() => {
   }
 
   function entrar(usuario) {
-    const ses = usuario || (typeof AUTH !== 'undefined' && AUTH.sesion ? AUTH.sesion() : null);
+    const ses = usuario || (typeof AUTH !== 'undefined' && typeof AUTH.sesionActual === 'function' ? AUTH.sesionActual() : (typeof AUTH !== 'undefined' && AUTH.sesion ? AUTH.sesion() : null));
     if (ses && Number(ses.id_rol) === 2) {
       if (typeof ADMIN !== 'undefined' && typeof ADMIN.abrir === 'function') {
         ADMIN.abrir();
@@ -57,9 +57,18 @@ const AUTH_UI = (() => {
     if (typeof ADMIN !== 'undefined' && typeof ADMIN.ocultar === 'function') {
       ADMIN.ocultar();
     }
+    if (typeof STORE !== 'undefined' && typeof STORE.limpiarHistorialEnMemoria === 'function') {
+      STORE.limpiarHistorialEnMemoria();
+    }
+    if (typeof UI !== 'undefined' && typeof UI.limpiarHistorialDOM === 'function') {
+      UI.limpiarHistorialDOM();
+    }
     UI.actualizarBadgeUsuario();
     UI.limpiarUIviaje();
     UI.goToScreen(1, true);
+    if (ses && ses.id_usuario && !ses.invitado && typeof UI.sincronizarHistorialDesdeAws === 'function') {
+      UI.sincronizarHistorialDesdeAws(ses.id_usuario);
+    }
     if (typeof MAPA !== 'undefined') setTimeout(() => { try { MAPA.invalidar(); } catch (_) {} }, 240);
   }
 
@@ -163,10 +172,13 @@ const AUTH_UI = (() => {
     if (vb) vb.innerHTML = '';
     const lt = document.getElementById('lastTripBox');
     if (lt) lt.classList.add('hidden');
+    if (typeof UI !== 'undefined' && typeof UI.limpiarHistorialDOM === 'function') {
+      UI.limpiarHistorialDOM();
+    }
   }
 
   function salir() {
-    AUTH.salir();
+    AUTH.cerrarSesion();
     if (typeof ADMIN !== 'undefined' && typeof ADMIN.ocultar === 'function') {
       ADMIN.ocultar();
     }
@@ -225,18 +237,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 3) Pestañas de autenticación
   try { AUTH_UI.tab('login'); } catch (_) {}
 
-  // 4) Recuperar datos persistidos (historial, cuentas y sesión)
-  try { await hidratarPersistencia(); } catch (_) {}
+  // 4) Recuperar datos persistidos (primero sesión/cuentas, luego historial aislado del usuario)
   try { await AUTH.hidratar(); } catch (_) {}
+  try { await hidratarPersistencia(); } catch (_) {}
 
   // 5) Sesión existente → entrar directo (Administrador o Pasajero)
-  const s = AUTH.sesion();
+  const s = AUTH.sesionActual();
   UI.actualizarBadgeUsuario();
   if (s && Number(s.id_rol) === 2 && typeof ADMIN !== 'undefined' && typeof ADMIN.abrir === 'function') {
     ADMIN.abrir();
   } else if (s && (s.nombre || s.email || s.invitado)) {
     UI.goToScreen(1, true);
+    if (s.id_usuario && !s.invitado && typeof UI.sincronizarHistorialDesdeAws === 'function') {
+      UI.sincronizarHistorialDesdeAws(s.id_usuario);
+    }
   } else {
+    if (typeof STORE !== 'undefined' && typeof STORE.limpiarHistorialEnMemoria === 'function') {
+      STORE.limpiarHistorialEnMemoria();
+    }
+    if (typeof UI !== 'undefined' && typeof UI.limpiarHistorialDOM === 'function') {
+      UI.limpiarHistorialDOM();
+    }
     UI.goToScreen(0, true);
   }
 

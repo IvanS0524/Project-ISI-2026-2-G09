@@ -103,6 +103,7 @@ const AUTH = (() => {
     }
 
     if (api.ok && api.data && typeof api.data.id_usuario === 'number') {
+      limpiarEstadoHistorialEnSesion();
       const u = await guardarLocal(api.data.nombre || nombre, email, pass, api.data.id_usuario, 'aws_rds');
       return {
         ok: true,
@@ -137,6 +138,7 @@ const AUTH = (() => {
     }
 
     if (api.ok && api.data && typeof api.data.id_usuario === 'number') {
+      limpiarEstadoHistorialEnSesion();
       const idRol = Number(
         api.data.id_rol != null
           ? api.data.id_rol
@@ -157,6 +159,9 @@ const AUTH = (() => {
         origen: 'aws_rds'
       };
       escribir(K_SES, sesionObj);
+      if (Number(idRol) !== 2 && typeof UI !== 'undefined' && typeof UI.sincronizarHistorialDesdeAws === 'function') {
+        UI.sincronizarHistorialDesdeAws(sesionObj.id_usuario);
+      }
       return { ok: true, usuario: sesionObj };
     }
 
@@ -174,8 +179,37 @@ const AUTH = (() => {
     return { ok: false, code: 'NETWORK_ERROR', error: 'No se pudo conectar con el servidor de UniX Driver. Verifica tu conexión e inténtalo de nuevo.' };
   }
 
+  function limpiarEstadoHistorialEnSesion() {
+    try {
+      if (typeof STORE !== 'undefined' && typeof STORE.limpiarHistorialEnMemoria === 'function') {
+        STORE.limpiarHistorialEnMemoria();
+      } else if (typeof limpiarHistorialEnMemoria === 'function') {
+        limpiarHistorialEnMemoria();
+      }
+    } catch (_) {}
+    try {
+      if (typeof UI !== 'undefined' && typeof UI.limpiarHistorialDOM === 'function') {
+        UI.limpiarHistorialDOM();
+      } else if (typeof document !== 'undefined') {
+        const hl = document.getElementById('histList');
+        if (hl) hl.innerHTML = '';
+        const hk = document.getElementById('histKpis');
+        if (hk) hk.innerHTML = '';
+        const lt = document.getElementById('lastTripBox');
+        if (lt) lt.classList.add('hidden');
+        const vj = document.getElementById('cuentaViajes');
+        if (vj) vj.textContent = '0';
+      }
+    } catch (_) {}
+  }
+
   function sesion() { return leer(K_SES, null); }
-  function salir() { borrar(K_SES); }
+  function sesionActual() { return sesion(); }
+  function cerrarSesion() {
+    borrar(K_SES);
+    limpiarEstadoHistorialEnSesion();
+  }
+  function salir() { cerrarSesion(); }
   function actualizarSesion(cambios = {}) {
     const s = sesion();
     if (!s) return null;
@@ -199,8 +233,9 @@ const AUTH = (() => {
     return nueva;
   }
   function invitado() {
-    escribir(K_SES, { id_usuario: 1, email: null, nombre: 'Invitado', invitado: true, desde: new Date().toISOString(), recordar: false });
-    return { id_usuario: 1, nombre: 'Invitado', email: null, invitado: true };
+    limpiarEstadoHistorialEnSesion();
+    escribir(K_SES, { id_usuario: null, email: null, nombre: 'Invitado', invitado: true, desde: new Date().toISOString(), recordar: false });
+    return { id_usuario: null, nombre: 'Invitado', email: null, invitado: true };
   }
 
   async function solicitarCodigo(email) {
@@ -266,7 +301,7 @@ const AUTH = (() => {
   }
 
   return {
-    registrar, ingresar, sesion, salir, cerrarSesion: salir, actualizarSesion, invitado, solicitarCodigo, cambiarConCodigo, google,
+    registrar, ingresar, sesion, sesionActual, salir, cerrarSesion, actualizarSesion, invitado, solicitarCodigo, cambiarConCodigo, google,
     eliminarCuenta, emailValido, hidratar,
     get nubeActiva() { return false; },
     get awsActivo() { return true; }
