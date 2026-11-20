@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from backend.database.conexion import get_db
 from backend.schemas.busqueda import BusquedaCrear, BusquedaRespuesta
-from backend.services import busqueda_service
+from backend.services import busqueda_service, lugar_ia_service
 
 router = APIRouter(prefix="/busquedas", tags=["Búsqueda Unificada y Barrios"])
 
@@ -23,6 +23,27 @@ def listar_barrios_cartagena(
 ):
     """Devuelve el catálogo oficial de barrios de Cartagena con sus coordenadas X y Y."""
     return busqueda_service.filtrar_barrios_autocompletado(q)
+
+
+@router.get(
+    "/resolver-lugar",
+    response_model=list[dict[str, Any]],
+    status_code=status.HTTP_200_OK,
+    summary="Resolver un lugar o dirección en Cartagena con coordenadas exactas",
+)
+def resolver_lugar_cartagena(
+    q: str = Query(
+        ...,
+        min_length=3,
+        max_length=120,
+        description="Nombre del lugar, sitio turístico, hotel, restaurante o dirección en Cartagena",
+    )
+):
+    """
+    Resuelve lugares de Cartagena de Indias devolviendo coordenadas reales exactas
+    dentro de la ciudad junto con su barrio oficial más cercano del catálogo S3.
+    """
+    return lugar_ia_service.resolver_lugar_cartagena(q)
 
 
 @router.post(

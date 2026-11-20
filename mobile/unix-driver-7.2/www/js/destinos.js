@@ -160,9 +160,40 @@ function buscarDestinos(texto, categoria, limite) {
 
 const PICKER = (() => {
   let abiertoAntes = null;
+  let remotoTimer = null;
+  let remotoSeq = 0;
+  let remotoAbort = null;
+
+  function cancelarBusquedaRemota() {
+    if (remotoTimer) { clearTimeout(remotoTimer); remotoTimer = null; }
+    if (remotoAbort) { try { remotoAbort.abort(); } catch (_) {} remotoAbort = null; }
+    remotoSeq += 1;
+  }
+
+  function hayCoincidenciaExacta(lista, texto) {
+    const t = norm(texto);
+    if (!t || !lista.length) return false;
+    return lista.some(d => (d.nombre_norm || norm(d.nombre)) === t || (d.barrio_norm || norm(d.barrio)) === t);
+  }
+
+  function renderFilas(lista) {
+    return lista.map(d => {
+      const sub = [d.categoria, d.localidad || (d.barrio && d.barrio !== d.nombre ? d.barrio : null)]
+        .filter(Boolean).join(' · ');
+      return `<div class="picker-item" role="button" tabindex="0" data-id="${esc(d.id)}">
+        <div class="pi-ico">${iconoCat(d.categoria)}</div>
+        <div class="pi-main">
+          <b>${esc(d.nombre)}</b>
+          <span>${esc(sub)}</span>
+        </div>
+        <div class="pi-price">Elegir</div>
+      </div>`;
+    }).join('');
+  }
 
   function abrir() {
     abiertoAntes = document.activeElement;
+    cancelarBusquedaRemota();
     UI.mostrar('pickerOverlay');
     DEST.texto = '';
     DEST.filtro = 'todas';
@@ -172,6 +203,7 @@ const PICKER = (() => {
     filtrar();
   }
   function cerrar() {
+    cancelarBusquedaRemota();
     UI.ocultar('pickerOverlay');
     UI.ocultar('destinosOverlay');
     if (abiertoAntes && abiertoAntes.blur) abiertoAntes.blur();
@@ -201,28 +233,84 @@ const PICKER = (() => {
   function filtrar() {
     const inp = document.getElementById('pickerInput');
     DEST.texto = inp ? inp.value : '';
+    const qTrim = DEST.texto.trim();
     const lista = buscarDestinos(DEST.texto, DEST.filtro, 0);
     const cont = document.getElementById('pickerList');
     const cnt = document.getElementById('pickerCount');
+    if (!cont) return;
+
+    cancelarBusquedaRemota();
+
     if (cnt) cnt.textContent = lista.length + (lista.length === 1 ? ' lugar' : ' lugares');
 
+    const puedeResolver = typeof window !== 'undefined' && window.apiService && typeof window.apiService.resolverLugar === 'function';
+    const necesitaRemoto = puedeResolver && qTrim.length >= 4 && (lista.length === 0 || (lista.length < 2 && !hayCoincidenciaExacta(lista, qTrim)));
+
     if (!lista.length) {
-      cont.innerHTML = `<div class="picker-empty">No encontramos "${(DEST.texto || '').replace(/[<>]/g, '')}".<br>Prueba con otro nombre, un barrio o una categoría.</div>`;
-      return;
+      if (necesitaRemoto) {
+        cont.innerHTML = '<div class="picker-empty">Buscando en Cartagena...</div>';
+      } else {
+        cont.innerHTML = `<div class="picker-empty">No encontramos "${(DEST.texto || '').replace(/[<>]/g, '')}".<br>Prueba con otro nombre, un barrio o una categoría.</div>`;
+      }
+    } else {
+      cont.innerHTML = renderFilas(lista) + (necesitaRemoto ? '<div class="picker-empty" style="padding:10px 12px;">Buscando en Cartagena...</div>' : '');
+      delegar(cont);
     }
-    cont.innerHTML = lista.map(d => {
-      const sub = [d.categoria, d.localidad || (d.barrio && d.barrio !== d.nombre ? d.barrio : null)]
-        .filter(Boolean).join(' · ');
-      return `<div class="picker-item" role="button" tabindex="0" data-id="${esc(d.id)}">
-        <div class="pi-ico">${iconoCat(d.categoria)}</div>
-        <div class="pi-main">
-          <b>${esc(d.nombre)}</b>
-          <span>${esc(sub)}</span>
-        </div>
-        <div class="pi-price">Elegir</div>
-      </div>`;
-    }).join('');
-    delegar(cont);
+
+    if (!necesitaRemoto) return;
+
+    const seq = ++remotoSeq;
+    remotoTimer = setTimeout(async () => {
+      remotoTimer = null;
+      if (seq !== remotoSeq) return;
+      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      remotoAbort = ctrl;
+      let remotos = [];
+      try {
+        remotos = await window.apiService.resolverLugar(qTrim, ctrl ? ctrl.signal : null);
+      } catch (_) {
+        remotos = [];
+      } finally {
+        if (remotoAbort === ctrl) remotoAbort = null;
+      }
+
+      if (seq !== remotoSeq) return;
+      const actualInp = document.getElementById('pickerInput');
+      if (actualInp && actualInp.value.trim() !== qTrim) return;
+
+      const vistos = new Set(lista.map(d => norm(d.nombre)));
+      const combinados = lista.slice();
+      (Array.isArray(remotos) ? remotos : []).forEach((r, idx) => {
+        if (!r || !r.nombre || !tieneCoordsValidas(r)) return;
+        const nNorm = norm(r.nombre);
+        if (vistos.has(nNorm)) return;
+        vistos.add(nNorm);
+        const idRem = 'remoto-' + seq + '-' + idx;
+        const item = {
+          id: idRem,
+          nombre: String(r.nombre).trim(),
+          nombre_norm: nNorm,
+          barrio: String(r.barrio || r.nombre).trim(),
+          barrio_norm: norm(r.barrio || r.nombre),
+          categoria: String(r.categoria || 'Lugar en Cartagena').trim(),
+          cat_norm: norm(r.categoria || 'Lugar en Cartagena'),
+          lat: Number(r.lat),
+          lon: Number(r.lon),
+          fuente: r.fuente || 'cartagena',
+          verificado: true
+        };
+        DEST.porId[idRem] = item;
+        combinados.push(item);
+      });
+
+      if (cnt) cnt.textContent = combinados.length + (combinados.length === 1 ? ' lugar' : ' lugares');
+      if (!combinados.length) {
+        cont.innerHTML = `<div class="picker-empty">No encontramos "${qTrim.replace(/[<>]/g, '')}".<br>Prueba con otro nombre, un barrio o una categoría.</div>`;
+        return;
+      }
+      cont.innerHTML = renderFilas(combinados);
+      delegar(cont);
+    }, 500);
   }
 
   /* Un solo listener por contenedor: cualquier lugar o botón "Elegir" se selecciona al instante. */

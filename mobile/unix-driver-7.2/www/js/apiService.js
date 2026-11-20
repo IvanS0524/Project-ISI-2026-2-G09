@@ -62,6 +62,13 @@
     const timeoutMs = Number(opciones.timeoutMs) || cfg.timeoutMs;
     const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
     const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+    if (opciones.signal && ctrl) {
+      if (opciones.signal.aborted) {
+        if (timer) clearTimeout(timer);
+        return { ok: false, status: 0, data: null, redError: true, aborted: true, url: host };
+      }
+      opciones.signal.addEventListener('abort', () => { try { ctrl.abort(); } catch (_) {} }, { once: true });
+    }
 
     try {
       const fetchOpts = {
@@ -176,15 +183,40 @@
       return res.data;
     },
 
+    // 4b. Resolver lugar específico o dirección en Cartagena con coordenadas exactas (GET /busquedas/resolver-lugar?q=...)
+    async resolverLugar(query, signal = null) {
+      const q = String(query || '').trim();
+      if (q.length < 3) return [];
+      const opciones = { method: 'GET', timeoutMs: 8000 };
+      if (signal) opciones.signal = signal;
+      const res = await peticion(`/busquedas/resolver-lugar?q=${encodeURIComponent(q)}`, opciones);
+      if (!res.ok || !Array.isArray(res.data)) {
+        return [];
+      }
+      return res.data;
+    },
+
     // 5. Realizar búsqueda unificada y comparar ofertas Uber, DiDi e inDrive (DSS04P -> POST /busquedas/)
-    async buscarOfertas(origen, destino, idUsuario = 1) {
+    async buscarOfertas(origen, destino, idUsuario = 1, coords = null) {
+      const body = {
+        origen: String(origen || '').trim(),
+        destino: String(destino || '').trim(),
+        id_usuario: Number(idUsuario) || 1
+      };
+      if (coords && typeof coords === 'object') {
+        const esNum = v => v != null && v !== '' && Number.isFinite(Number(v));
+        if (esNum(coords.origen_lat) && esNum(coords.origen_lon)) {
+          body.origen_lat = Number(coords.origen_lat);
+          body.origen_lon = Number(coords.origen_lon);
+        }
+        if (esNum(coords.destino_lat) && esNum(coords.destino_lon)) {
+          body.destino_lat = Number(coords.destino_lat);
+          body.destino_lon = Number(coords.destino_lon);
+        }
+      }
       const res = await peticion('/busquedas/', {
         method: 'POST',
-        body: {
-          origen: String(origen || '').trim(),
-          destino: String(destino || '').trim(),
-          id_usuario: Number(idUsuario) || 1
-        }
+        body
       });
       if (!res.ok) throw new Error(extraerError(res, 'Error al buscar ofertas en el servidor'));
       return res.data;
