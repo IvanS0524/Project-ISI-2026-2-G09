@@ -320,19 +320,35 @@ const FLOW = (() => {
         ? textoOrigen + ' (Origen)'
         : textoOrigen;
 
+      const coords = {
+        origen_lat: coordsValidas(trip.origen) ? Number(trip.origen.lat) : null,
+        origen_lon: coordsValidas(trip.origen) ? Number(trip.origen.lon) : null,
+        destino_lat: coordsValidas(trip.destino) ? Number(trip.destino.lat) : null,
+        destino_lon: coordsValidas(trip.destino) ? Number(trip.destino.lon) : null
+      };
+
       let data = null;
       if (typeof window !== 'undefined' && window.apiService && typeof window.apiService.buscarOfertas === 'function') {
-        data = await window.apiService.buscarOfertas(origenFinal, textoDestino, obtenerIdUsuarioActivo());
+        data = await window.apiService.buscarOfertas(origenFinal, textoDestino, obtenerIdUsuarioActivo(), coords);
       } else {
         const apiUrl = (window.UNIX_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
+        const payload = {
+          origen: origenFinal,
+          destino: textoDestino,
+          id_usuario: obtenerIdUsuarioActivo()
+        };
+        if (coords.origen_lat != null && coords.origen_lon != null) {
+          payload.origen_lat = coords.origen_lat;
+          payload.origen_lon = coords.origen_lon;
+        }
+        if (coords.destino_lat != null && coords.destino_lon != null) {
+          payload.destino_lat = coords.destino_lat;
+          payload.destino_lon = coords.destino_lon;
+        }
         const resp = await fetch(`${apiUrl}/busquedas/`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            origen: origenFinal,
-            destino: textoDestino,
-            id_usuario: obtenerIdUsuarioActivo()
-          })
+          body: JSON.stringify(payload)
         });
         if (resp.ok) data = await resp.json();
       }

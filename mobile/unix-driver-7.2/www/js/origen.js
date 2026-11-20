@@ -14,11 +14,30 @@
 const ORIGEN_UI = (() => {
   let resultados = [];
   let buscando = false;
+  let remotoTimer = null;
+  let remotoSeq = 0;
+  let remotoAbort = null;
 
   const el = id => document.getElementById(id);
   const setText = (id, v) => { const e = el(id); if (e) e.textContent = v; };
+  const normO = s => (typeof norm === 'function')
+    ? norm(s)
+    : String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+
+  function cancelarBusquedaRemota() {
+    if (remotoTimer) { clearTimeout(remotoTimer); remotoTimer = null; }
+    if (remotoAbort) { try { remotoAbort.abort(); } catch (_) {} remotoAbort = null; }
+    remotoSeq += 1;
+  }
+
+  function hayCoincidenciaExactaOrigen(lista, texto) {
+    const t = normO(texto);
+    if (!t || !lista.length) return false;
+    return lista.some(d => normO(d.nombre) === t || normO(d.barrio) === t);
+  }
 
   function abrir() {
+    cancelarBusquedaRemota();
     mostrar();
     const inp = el('origenInput');
     if (inp) { inp.value = ''; }
@@ -27,7 +46,11 @@ const ORIGEN_UI = (() => {
     setTimeout(() => { try { inp.focus(); } catch (_) {} }, 130);
   }
 
-  function cerrar() { const o = el('origenOverlay'); if (o) o.classList.add('hidden'); }
+  function cerrar() {
+    cancelarBusquedaRemota();
+    const o = el('origenOverlay');
+    if (o) o.classList.add('hidden');
+  }
 
   function mostrar() {
     const o = el('origenOverlay');
@@ -47,6 +70,9 @@ const ORIGEN_UI = (() => {
   function pintarSugerencias(texto) {
     const cont = el('origenList');
     if (!cont) return;
+    cancelarBusquedaRemota();
+
+    const qTrim = String(texto || '').trim();
     const lista = buscarDestinos(texto, 'todas', 40).filter(tieneCoordsOrigen);
     resultados = lista.map(d => ({
       tipo: 'catalogo',
@@ -57,16 +83,64 @@ const ORIGEN_UI = (() => {
       lat: Number(d.lat),
       lon: Number(d.lon)
     }));
-    pintarLista();
+
+    const puedeResolver = typeof window !== 'undefined' && window.apiService && typeof window.apiService.resolverLugar === 'function';
+    const necesitaRemoto = puedeResolver && qTrim.length >= 4 && (resultados.length === 0 || (resultados.length < 2 && !hayCoincidenciaExactaOrigen(resultados, qTrim)));
+
+    pintarLista(necesitaRemoto);
+
+    if (!necesitaRemoto) return;
+
+    const seq = ++remotoSeq;
+    remotoTimer = setTimeout(async () => {
+      remotoTimer = null;
+      if (seq !== remotoSeq) return;
+      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      remotoAbort = ctrl;
+      let remotos = [];
+      try {
+        remotos = await window.apiService.resolverLugar(qTrim, ctrl ? ctrl.signal : null);
+      } catch (_) {
+        remotos = [];
+      } finally {
+        if (remotoAbort === ctrl) remotoAbort = null;
+      }
+
+      if (seq !== remotoSeq) return;
+      const actualInp = el('origenInput');
+      if (actualInp && actualInp.value.trim() !== qTrim) return;
+
+      const vistos = new Set(resultados.map(r => normO(r.nombre)));
+      (Array.isArray(remotos) ? remotos : []).forEach(r => {
+        if (!r || !r.nombre || !tieneCoordsOrigen(r)) return;
+        const nNorm = normO(r.nombre);
+        if (vistos.has(nNorm)) return;
+        vistos.add(nNorm);
+        const barrioRef = String(r.barrio || r.nombre).trim();
+        const catRef = String(r.categoria || '').trim();
+        resultados.push({
+          tipo: r.fuente || 'cartagena',
+          id: null,
+          nombre: String(r.nombre).trim(),
+          barrio: barrioRef,
+          detalle: [barrioRef && barrioRef !== r.nombre ? barrioRef : null, catRef].filter(Boolean).join(' · ') || 'Cartagena',
+          lat: Number(r.lat),
+          lon: Number(r.lon)
+        });
+      });
+      pintarLista(false);
+    }, 500);
   }
 
   const SVG_ORIGEN_PIN = '<svg class="ico-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z"/><circle cx="12" cy="11" r="2.2"/></svg>';
 
-  function pintarLista() {
+  function pintarLista(cargandoRemoto = false) {
     const cont = el('origenList');
     if (!cont) return;
     if (!resultados.length) {
-      cont.innerHTML = '<div class="origen-vacio">Sin resultados. Prueba con otro nombre o busca la dirección.</div>';
+      cont.innerHTML = cargandoRemoto
+        ? '<div class="origen-vacio">Buscando en Cartagena...</div>'
+        : '<div class="origen-vacio">Sin resultados. Prueba con otro nombre o busca la dirección.</div>';
       return;
     }
     cont.innerHTML = resultados.map((r, i) => `
@@ -74,7 +148,7 @@ const ORIGEN_UI = (() => {
         <span class="origen-pin">${SVG_ORIGEN_PIN}</span>
         <span class="origen-txt"><b>${escO(r.nombre)}</b><small>${escO(r.detalle || '')}</small></span>
         <span class="origen-choose">Elegir</span>
-      </button>`).join('');
+      </button>`).join('') + (cargandoRemoto ? '<div class="origen-vacio" style="padding:10px 12px;">Buscando en Cartagena...</div>' : '');
     delegarLista();
   }
 
@@ -97,6 +171,7 @@ const ORIGEN_UI = (() => {
 
   /* ---------- Búsqueda de direcciones (Nominatim) ---------- */
   async function buscarDireccion() {
+    cancelarBusquedaRemota();
     const inp = el('origenInput');
     const q = (inp ? inp.value : '').trim();
     if (q.length < 3) { setText('origenNoticeTxt', 'Escribe al menos 3 caracteres.'); return; }

@@ -16,6 +16,7 @@ w.L = { map: L, tileLayer: () => { const o = { addTo(){return o}, on(){return o}
 // OSRM y Backend FastAPI simulados en memoria para pruebas deterministas
 const dbUsuarios = new Map();
 let seqUsuario = 1;
+let ultimoPayloadBusqueda = null;
 w.fetch = async (url, opts = {}) => {
   const u = String(url);
   if (u.includes('router.project-osrm.org')) {
@@ -25,6 +26,22 @@ w.fetch = async (url, opts = {}) => {
       km = Math.sqrt(dLat * dLat + dLon * dLon); if (km < 0.2) km = 0.6; }
     return { ok: true, status: 200, json: async () => ({ code: 'Ok',
       routes: [{ distance: km * 1000, duration: km * 160, geometry: { type: 'LineString', coordinates: [[-75.5,10.4],[-75.51,10.41]] } }] }) };
+  }
+  if (u.includes('/busquedas/resolver-lugar')) {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ([
+        {
+          nombre: 'Monumento Zapatos Viejos',
+          barrio: 'Pie de la Popa',
+          categoria: 'Monumento',
+          lat: 10.4222,
+          lon: -75.5378,
+          fuente: 'gemini+nominatim'
+        }
+      ])
+    };
   }
   if (u.endsWith('/usuarios/registro')) {
     const body = JSON.parse(opts.body || '{}');
@@ -52,6 +69,7 @@ w.fetch = async (url, opts = {}) => {
     return { ok: true, status: 200, json: async () => ({ id_usuario: usr.id_usuario, nombre: usr.nombre, correo: usr.correo }) };
   }
   if (u.endsWith('/busquedas/')) {
+    try { ultimoPayloadBusqueda = JSON.parse(opts.body || '{}'); } catch (_) { ultimoPayloadBusqueda = null; }
     return {
       ok: true,
       status: 200,
@@ -228,8 +246,33 @@ t('buscar conductor → pantalla de ofertas', $('screen2').classList.contains('a
 const ofertas = d.querySelectorAll('#offers .offer');
 t('ofertas generadas', ofertas.length === 3, 'n=' + ofertas.length);
 t('contenedor de ofertas visible', !$('offers').classList.contains('hidden'));
+t('POST /busquedas/ envía coordenadas exactas de origen y destino',
+  !!ultimoPayloadBusqueda &&
+  typeof ultimoPayloadBusqueda.origen_lat === 'number' && typeof ultimoPayloadBusqueda.origen_lon === 'number' &&
+  typeof ultimoPayloadBusqueda.destino_lat === 'number' && typeof ultimoPayloadBusqueda.destino_lon === 'number');
 w.eval("UI.goToScreen(1)"); await new Promise(r => setTimeout(r, 80));
 t('volver atrás desde ofertas funciona', $('screen1').classList.contains('active'));
+// Autocompletado híbrido automático (500ms debounce sin mención a IA)
+w.eval('PICKER.abrir()'); $('pickerInput').value = 'zapatos viejos xq9'; w.eval('PICKER.filtrar()');
+t('autocompletado híbrido muestra estado discreto "Buscando en Cartagena..." sin mencionar IA',
+  /Buscando en Cartagena\.\.\./.test($('pickerList').textContent) && !/IA|Gemini|API/i.test($('pickerList').textContent));
+await new Promise(r => setTimeout(r, 650));
+const itemRem = d.querySelector('#pickerList .picker-item');
+t('autocompletado híbrido renderiza lugar resuelto desde backend con barrio de referencia',
+  !!itemRem && /Monumento Zapatos Viejos/.test(itemRem.textContent) && /Pie de la Popa/.test(itemRem.textContent));
+if (itemRem) { click(itemRem); await new Promise(r => setTimeout(r, 200)); }
+const destSel = w.eval('tripActual().destino');
+t('seleccionar lugar resuelto guarda coordenadas exactas en trip.destino',
+  !!destSel && destSel.nombre === 'Monumento Zapatos Viejos' && destSel.lat === 10.4222 && destSel.lon === -75.5378);
+w.eval('ORIGEN_UI.abrir()'); $('origenInput').value = 'zapatos viejos xq9'; w.eval("ORIGEN_UI.pintarSugerencias('zapatos viejos xq9')");
+await new Promise(r => setTimeout(r, 650));
+const oriRem = d.querySelector('#origenList .origen-item');
+t('autocompletado híbrido en Origen resuelve lugar y guarda coordenadas exactas',
+  !!oriRem && /Monumento Zapatos Viejos/.test(oriRem.textContent));
+if (oriRem) { click(oriRem); await new Promise(r => setTimeout(r, 200)); }
+const oriSel = w.eval('tripActual().origen');
+t('origen seleccionado conserva coordenadas exactas',
+  !!oriSel && oriSel.nombre === 'Monumento Zapatos Viejos' && oriSel.lat === 10.4222 && oriSel.lon === -75.5378);
 t('errores JS: ' + errs.length, errs.length === 0, errs.slice(0,2).join(' | '));
 
 console.log(`\nTOTAL ${pass}/${pass + fail} PASS`);
