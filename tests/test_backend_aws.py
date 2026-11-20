@@ -7,9 +7,12 @@ from backend.database.conexion import engine
 from backend.models.comision import Comision
 from backend.services.busqueda_service import (
     buscar_barrio_binaria,
+    calcular_distancia_haversine_km,
     cargar_barrios_cartagena,
+    encontrar_barrio_mas_cercano,
     obtener_distancia_trayecto_cartagena,
 )
+from backend.services import lugar_ia_service
 from backend.services.s3_service import descargar_barrios_desde_s3
 
 
@@ -37,6 +40,93 @@ def test_calculo_distancia_haversine_cartagena():
     distancia_km = obtener_distancia_trayecto_cartagena("Pie de la Popa", "Bocagrande")
     assert distancia_km > 1.0
     assert distancia_km < 25.0
+
+
+def test_distancia_trayecto_con_coordenadas_exactas():
+    """Verifica que obtener_distancia_trayecto_cartagena priorice coordenadas exactas sobre búsqueda por nombre."""
+    # Torre del Reloj (Centro) -> Hotel Caribe (Bocagrande)
+    o_lat, o_lon = 10.4236, -75.5492
+    d_lat, d_lon = 10.3987, -75.5579
+    dist_exacta = obtener_distancia_trayecto_cartagena(
+        "Lugar Libre A",
+        "Lugar Libre B",
+        origen_lat=o_lat,
+        origen_lon=o_lon,
+        destino_lat=d_lat,
+        destino_lon=d_lon,
+    )
+    esperada = calcular_distancia_haversine_km(o_lon, o_lat, d_lon, d_lat)
+    assert dist_exacta == esperada
+    assert Decimal("2.0") < dist_exacta < Decimal("10.0")
+
+
+def test_encontrar_barrio_mas_cercano_cartagena():
+    """Verifica la identificación del barrio oficial más cercano a partir de coordenadas de Cartagena."""
+    bocagrande = buscar_barrio_binaria("Bocagrande")
+    assert bocagrande is not None
+    cercano = encontrar_barrio_mas_cercano(
+        float(bocagrande["coordenada_y"]),
+        float(bocagrande["coordenada_x"]),
+    )
+    assert cercano is not None
+    assert cercano["nombre_oficial"] == "BOCAGRANDE"
+
+    popa = buscar_barrio_binaria("Pie de la Popa")
+    assert popa is not None
+    cercano_popa = encontrar_barrio_mas_cercano(
+        float(popa["coordenada_y"]),
+        float(popa["coordenada_x"]),
+    )
+    assert cercano_popa is not None
+    assert cercano_popa["nombre_oficial"] == "PIE DE LA POPA"
+
+
+def test_resolver_lugar_cartagena_flujos_y_respaldo(monkeypatch):
+    """Valida resolución con Nominatim, respaldo Gemini+S3 y manejo seguro de consultas cortas."""
+    lugar_ia_service.limpiar_cache_lugares()
+    assert lugar_ia_service.resolver_lugar_cartagena("ab") == []
+
+    # Caso 1: Gemini + Nominatim dentro de la caja geográfica de Cartagena
+    monkeypatch.setattr(
+        lugar_ia_service,
+        "_interpretar_con_gemini",
+        lambda q: {
+            "nombre_oficial": "Hotel Sofitel Legend Santa Clara",
+            "query_mapa": "Hotel Santa Clara, Cartagena, Colombia",
+            "barrio_probable": "San Diego",
+            "categoria": "Hotel",
+        },
+    )
+    monkeypatch.setattr(
+        lugar_ia_service,
+        "_consultar_nominatim_cartagena",
+        lambda q, limite=3: [
+            {
+                "name": "Sofitel Legend Santa Clara",
+                "display_name": "Sofitel Legend Santa Clara, San Diego, Cartagena, Colombia",
+                "lat": "10.4293",
+                "lon": "-75.5476",
+                "class": "tourism",
+                "type": "hotel",
+            }
+        ],
+    )
+    res_nom = lugar_ia_service.resolver_lugar_cartagena("hotel santa clara")
+    assert len(res_nom) == 1
+    assert res_nom[0]["nombre"] == "Hotel Sofitel Legend Santa Clara"
+    assert res_nom[0]["fuente"] == "gemini+nominatim"
+    assert 10.25 <= res_nom[0]["lat"] <= 10.60
+    assert -75.65 <= res_nom[0]["lon"] <= -75.35
+    assert res_nom[0]["barrio"]
+
+    # Caso 2: Nominatim vacío -> respaldo Gemini + S3
+    lugar_ia_service.limpiar_cache_lugares()
+    monkeypatch.setattr(lugar_ia_service, "_consultar_nominatim_cartagena", lambda q, limite=3: [])
+    res_s3 = lugar_ia_service.resolver_lugar_cartagena("hotel santa clara")
+    assert len(res_s3) == 1
+    assert res_s3[0]["fuente"] == "gemini+s3"
+    assert res_s3[0]["barrio"].upper() == "SAN DIEGO"
+    lugar_ia_service.limpiar_cache_lugares()
 
 
 def test_calculo_dinamico_comision_sin_redundancia():

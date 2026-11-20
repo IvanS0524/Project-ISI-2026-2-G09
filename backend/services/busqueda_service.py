@@ -137,13 +137,10 @@ def filtrar_barrios_autocompletado(termino: Optional[str] = None) -> list[dict[s
     return empiezan_con + contienen
 
 
-def calcular_distancia_haversine_km(
+def _distancia_linea_recta_km(
     lon1: float, lat1: float, lon2: float, lat2: float
-) -> Decimal:
-    """
-    Calcula la distancia real en kilómetros entre dos coordenadas (X=lon, Y=lat)
-    usando la fórmula geodésica de Haversine + factor de ruta urbana de Cartagena (1.30).
-    """
+) -> float:
+    """Calcula la distancia geodésica en línea recta (km) mediante la fórmula de Haversine."""
     radio_tierra_km = 6371.0
 
     d_lat = math.radians(lat2 - lat1)
@@ -155,28 +152,106 @@ def calcular_distancia_haversine_km(
         * math.cos(math.radians(lat2))
         * math.sin(d_lon / 2) ** 2
     )
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    distancia_linea_recta = radio_tierra_km * c
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(max(0.0, 1.0 - a)))
+    return radio_tierra_km * c
+
+
+def calcular_distancia_haversine_km(
+    lon1: float, lat1: float, lon2: float, lat2: float
+) -> Decimal:
+    """
+    Calcula la distancia real en kilómetros entre dos coordenadas (X=lon, Y=lat)
+    usando la fórmula geodésica de Haversine + factor de ruta urbana de Cartagena (1.30).
+    """
+    distancia_linea_recta = _distancia_linea_recta_km(lon1, lat1, lon2, lat2)
 
     # Factor de corrección vial urbana en Cartagena (1.30x) y mínimo de 1.5 km
     distancia_vial = max(1.5, distancia_linea_recta * 1.30)
     return Decimal(str(round(distancia_vial, 2)))
 
 
-def obtener_distancia_trayecto_cartagena(origen: str, destino: str) -> Decimal:
-    """Obtiene la distancia en km buscando las coordenadas (X, Y) de ambos barrios con Búsqueda Binaria."""
-    barrio_origen = buscar_barrio_binaria(origen)
-    barrio_destino = buscar_barrio_binaria(destino)
+def encontrar_barrio_mas_cercano(lat: float, lon: float) -> Optional[dict[str, Any]]:
+    """
+    Identifica el barrio oficial de Cartagena (catálogo S3/local) más cercano
+    a unas coordenadas (lat, lon) usando distancia geodésica de Haversine.
+    """
+    barrios = cargar_barrios_cartagena()
+    if not barrios or not (math.isfinite(lat) and math.isfinite(lon)):
+        return None
 
-    if barrio_origen and barrio_destino:
-        if barrio_origen["id_barrio"] == barrio_destino["id_barrio"]:
+    mejor_barrio: Optional[dict[str, Any]] = None
+    mejor_distancia = float("inf")
+
+    for barrio in barrios:
+        bx = float(barrio.get("coordenada_x") or 0.0)
+        by = float(barrio.get("coordenada_y") or 0.0)
+        if bx == 0.0 and by == 0.0:
+            continue
+        dist = _distancia_linea_recta_km(lon, lat, bx, by)
+        if dist < mejor_distancia:
+            mejor_distancia = dist
+            mejor_barrio = barrio
+
+    return mejor_barrio
+
+
+def _coordenadas_validas(lat: Optional[float], lon: Optional[float]) -> bool:
+    """Valida que un par de coordenadas (lat, lon) sea numérico, finito y distinto de (0, 0)."""
+    if lat is None or lon is None:
+        return False
+    try:
+        lat_f = float(lat)
+        lon_f = float(lon)
+    except (TypeError, ValueError):
+        return False
+    return math.isfinite(lat_f) and math.isfinite(lon_f) and not (lat_f == 0.0 and lon_f == 0.0)
+
+
+def obtener_distancia_trayecto_cartagena(
+    origen: str,
+    destino: str,
+    origen_lat: Optional[float] = None,
+    origen_lon: Optional[float] = None,
+    destino_lat: Optional[float] = None,
+    destino_lon: Optional[float] = None,
+) -> Decimal:
+    """
+    Obtiene la distancia en km usando coordenadas exactas si se envían, o resolviendo
+    los barrios oficiales mediante Búsqueda Binaria sobre el catálogo de Cartagena.
+    """
+    lon1: Optional[float] = None
+    lat1: Optional[float] = None
+    lon2: Optional[float] = None
+    lat2: Optional[float] = None
+    barrio_origen: Optional[dict[str, Any]] = None
+    barrio_destino: Optional[dict[str, Any]] = None
+
+    if _coordenadas_validas(origen_lat, origen_lon):
+        lat1 = float(origen_lat)  # type: ignore[arg-type]
+        lon1 = float(origen_lon)  # type: ignore[arg-type]
+    else:
+        barrio_origen = buscar_barrio_binaria(origen)
+        if barrio_origen:
+            lon1 = float(barrio_origen["coordenada_x"])
+            lat1 = float(barrio_origen["coordenada_y"])
+
+    if _coordenadas_validas(destino_lat, destino_lon):
+        lat2 = float(destino_lat)  # type: ignore[arg-type]
+        lon2 = float(destino_lon)  # type: ignore[arg-type]
+    else:
+        barrio_destino = buscar_barrio_binaria(destino)
+        if barrio_destino:
+            lon2 = float(barrio_destino["coordenada_x"])
+            lat2 = float(barrio_destino["coordenada_y"])
+
+    if lon1 is not None and lat1 is not None and lon2 is not None and lat2 is not None:
+        if (
+            barrio_origen is not None
+            and barrio_destino is not None
+            and barrio_origen["id_barrio"] == barrio_destino["id_barrio"]
+        ):
             return Decimal("1.80")
-        return calcular_distancia_haversine_km(
-            barrio_origen["coordenada_x"],
-            barrio_origen["coordenada_y"],
-            barrio_destino["coordenada_x"],
-            barrio_destino["coordenada_y"],
-        )
+        return calcular_distancia_haversine_km(lon1, lat1, lon2, lat2)
 
     # Respaldo determinístico si se ingresa una dirección libre que no menciona un barrio oficial
     semilla = sum(ord(c) for c in (origen + destino)) % 90
@@ -232,9 +307,14 @@ def ejecutar_busqueda_unificada(db: Session, datos: BusquedaCrear) -> Busqueda:
             db, busqueda, "SIN_RESULTADOS"
         )
 
-    # 3. Calcular distancia real usando Búsqueda Binaria sobre las coordenadas de Cartagena
+    # 3. Calcular distancia real usando coordenadas exactas o Búsqueda Binaria sobre Cartagena
     distancia_km = obtener_distancia_trayecto_cartagena(
-        datos.origen, datos.destino
+        datos.origen,
+        datos.destino,
+        origen_lat=datos.origen_lat,
+        origen_lon=datos.origen_lon,
+        destino_lat=datos.destino_lat,
+        destino_lon=datos.destino_lon,
     )
     minutos_base = max(6, int(round(float(distancia_km) * 2.8)))
 

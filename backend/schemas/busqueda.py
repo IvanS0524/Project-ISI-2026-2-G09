@@ -84,6 +84,10 @@ class BusquedaCrear(BaseModel):
         examples=["Centro Histórico - Torre del Reloj"],
     )
     id_usuario: int = Field(..., gt=0, examples=[1])
+    origen_lat: Optional[float] = Field(default=None, ge=-90, le=90)
+    origen_lon: Optional[float] = Field(default=None, ge=-180, le=180)
+    destino_lat: Optional[float] = Field(default=None, ge=-90, le=90)
+    destino_lon: Optional[float] = Field(default=None, ge=-180, le=180)
 
 
 class BusquedaRespuesta(BaseModel):
