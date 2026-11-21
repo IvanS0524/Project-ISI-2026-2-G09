@@ -18,11 +18,13 @@ Definir los actores, requisitos funcionales, conceptos principales del dominio y
 
 Los DSS se encuentran organizados por actor y describen las interacciones entre el usuario y el sistema para los casos de uso principales.
 
+* [Resumen de modelos DSS](model/analisis/modelo_dss/README.md): Índice general de los diagramas de secuencia del sistema.
 * [DSS del Pasajero](model/analisis/modelo_dss/Pasajero/): Seis diagramas de secuencia del sistema.
 * [DSS del Administrador](model/analisis/modelo_dss/Administrador/): Cuatro diagramas de secuencia del sistema.
 
 ### 3. Diseño
 
+* [Resumen de diseño estructural](model/diseño/README.md): Guía general de los artefactos de diseño en PlantUML.
 * [Diagrama de clases](model/diseño/diagrama_clases/diagrama_clases.puml): Responsabilidades y relaciones del dominio.
 * [Modelo entidad-relación](model/diseño/modelo_er/diagrama_er.puml): Estructura de persistencia propuesta.
 * [Diagramas de secuencia](model/diseño/diagramas_secuencia/README.md): Diez diagramas que detallan la colaboración interna de los casos de uso.
@@ -47,7 +49,7 @@ Los DSS se encuentran organizados por actor y describen las interacciones entre 
 ### Plataforma de Transporte
 
 - Proporcionar información sobre las ofertas de transporte disponibles.
-- Representar la integración conceptual con plataformas externas como Uber, DiDi e inDrive.
+- Representar la integración conceptual (mediante proveedores simulados) con plataformas externas como **Uber**, **DiDi** e **inDrive**.
 
 ## Integrantes
 
