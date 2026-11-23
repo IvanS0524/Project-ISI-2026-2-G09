@@ -3080,22 +3080,33 @@ body.admin-mode .bottom-nav {
 /* ============ BANNER FLOTANTE PERSISTENTE DE VIAJE ACTIVO ============ */
 .active-trip-banner {
   position: fixed;
-  bottom: 72px;
-  left: 16px;
-  right: 16px;
-  z-index: 900;
-  max-width: 440px;
-  margin: 0 auto;
-  background: linear-gradient(135deg, #0A2540, #0B46C4);
-  color: #FFFFFF;
-  border-radius: 16px;
-  padding: 10px 14px;
+  bottom: calc(86px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 24px);
+  max-width: 416px;
+  z-index: 1050;
+  min-height: 58px;
+  padding: 12px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  box-shadow: 0 10px 24px rgba(10, 37, 64, 0.28);
+  box-sizing: border-box;
+  background: linear-gradient(135deg, #0A2540, #0B46C4);
+  color: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(10, 37, 64, 0.25);
   border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+body.has-active-trip-banner #screen10.active,
+body.has-active-trip-banner #cuentaOverlay.profile-screen.active:not(.hidden),
+body.has-active-trip-banner #screen13.more-screen.active,
+body:has(#activeTripBanner:not(.hidden)) #screen10.active,
+body:has(#activeTripBanner:not(.hidden)) #cuentaOverlay.profile-screen.active:not(.hidden),
+body:has(#activeTripBanner:not(.hidden)) #screen13.more-screen.active {
+  padding-bottom: calc(156px + env(safe-area-inset-bottom, 0px)) !important;
 }
 
 .active-trip-banner.hidden {

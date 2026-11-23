@@ -36,6 +36,8 @@ const UI = (() => {
     if (!autenticado || typeof trip === 'undefined' || !trip || typeof ESTADOS === 'undefined') {
       banner.classList.add('hidden');
       banner.classList.remove('is-urgent');
+      banner.style.removeProperty('bottom');
+      document.body.classList.remove('has-active-trip-banner');
       return;
     }
 
@@ -47,6 +49,8 @@ const UI = (() => {
     if (!visible) {
       banner.classList.add('hidden');
       banner.classList.remove('is-urgent');
+      banner.style.removeProperty('bottom');
+      document.body.classList.remove('has-active-trip-banner');
       return;
     }
 
@@ -87,6 +91,17 @@ const UI = (() => {
     if (subEl) subEl.textContent = subtitulo;
     banner.classList.toggle('is-urgent', urgente);
     banner.classList.remove('hidden');
+    document.body.classList.add('has-active-trip-banner');
+
+    const bottomNav = document.querySelector('.bottom-nav');
+    if (bottomNav && typeof bottomNav.getBoundingClientRect === 'function') {
+      const navHeight = Math.ceil(bottomNav.getBoundingClientRect().height || 0);
+      if (navHeight > 74) {
+        banner.style.bottom = `${navHeight + 12}px`;
+      } else {
+        banner.style.removeProperty('bottom');
+      }
+    }
   }
 
   function irAInicio() {
