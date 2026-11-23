@@ -1,10 +1,12 @@
 import os
+from datetime import datetime, timedelta
 from decimal import Decimal
 import pytest
 from sqlalchemy import text
 
 from backend.database.conexion import engine
 from backend.models.comision import Comision
+from backend.models.viaje import Viaje
 from backend.services.busqueda_service import (
     buscar_barrio_binaria,
     calcular_distancia_haversine_km,
@@ -12,7 +14,7 @@ from backend.services.busqueda_service import (
     encontrar_barrio_mas_cercano,
     obtener_distancia_trayecto_cartagena,
 )
-from backend.services import lugar_ia_service
+from backend.services import lugar_ia_service, viaje_service
 from backend.services.s3_service import descargar_barrios_desde_s3
 
 
@@ -134,6 +136,57 @@ def test_calculo_dinamico_comision_sin_redundancia():
     comision = Comision(porcentaje_aplicado=Decimal("5.50"), estado="PENDIENTE")
     monto = comision.calcular_comision(Decimal("15500.00"))
     assert monto == Decimal("852.50")
+
+
+def test_limpiar_viajes_solicitados_huerfanos():
+    """Verifica que viajes en SOLICITADO > 5 min se cancelen automáticamente sin alterar los recientes o completados."""
+    class DummyDB:
+        def __init__(self):
+            self.commits = 0
+            self.refreshes = []
+
+        def commit(self):
+            self.commits += 1
+
+        def refresh(self, obj):
+            self.refreshes.append(obj.id_viaje)
+
+    ahora = datetime.now()
+    v_huerfano = Viaje(
+        id_viaje=10,
+        id_oferta=1,
+        estado="SOLICITADO",
+        fecha_hora_inicio=ahora - timedelta(minutes=7),
+    )
+    v_reciente = Viaje(
+        id_viaje=11,
+        id_oferta=2,
+        estado="SOLICITADO",
+        fecha_hora_inicio=ahora - timedelta(minutes=2),
+    )
+    v_completado = Viaje(
+        id_viaje=12,
+        id_oferta=3,
+        estado="COMPLETADO",
+        precio_final=Decimal("14000.00"),
+        fecha_hora_inicio=ahora - timedelta(minutes=30),
+        fecha_hora_fin=ahora - timedelta(minutes=15),
+    )
+
+    db = DummyDB()
+    resultado = viaje_service.limpiar_viajes_solicitados_huerfanos(
+        db, [v_huerfano, v_reciente, v_completado]
+    )
+
+    assert len(resultado) == 1 or len(resultado) == 3
+    assert v_huerfano.estado == "CANCELADO"
+    assert v_huerfano.precio_final == Decimal("0.00")
+    assert v_huerfano.fecha_hora_fin is not None
+    assert v_reciente.estado == "SOLICITADO"
+    assert v_reciente.fecha_hora_fin is None
+    assert v_completado.estado == "COMPLETADO"
+    assert db.commits == 1
+    assert db.refreshes == [10]
 
 
 # =====================================================================
