@@ -654,6 +654,9 @@
               <div class="row"><span class="label">Llega en</span><span class="value" id="aEta">-</span></div>
               <div class="row"><span class="label">Precio acordado</span><span class="value" id="aPrecio">-</span></div>
             </div>
+            <div id="assignedTimeoutBox" class="trip-timer-box hidden" role="status" aria-live="polite">
+              <span id="assignedTimeoutText">Confirma tu viaje en 01:00 o se cancelará automáticamente</span>
+            </div>
           </div>
 
           <div class="assigned-card-actions">
@@ -722,6 +725,10 @@
             <div class="row"><span class="label">Placa</span><span class="value" id="lPlaca">-</span></div>
             <div class="row"><span class="label">Destino</span><span class="value" id="lDestino">-</span></div>
             <div class="row"><span class="label">Precio</span><span class="value" id="lPrecio">-</span></div>
+          </div>
+
+          <div id="arrivedTimeoutBox" class="trip-timer-box hidden" role="status" aria-live="polite">
+            <span id="arrivedTimeoutText">Tiempo de espera del conductor: 00:45</span>
           </div>
 
           <button class="btn btn-primary btn-block" style="margin-top:14px;" onclick="FLOW.iniciarViaje()">Iniciar
@@ -852,7 +859,7 @@
         <div class="card">
           <div class="flex-between">
             <h2>Historial de viajes</h2>
-            <button class="btn btn-ghost btn-sm" onclick="UI.goToScreen(1)">Volver</button>
+            <button class="btn btn-ghost btn-sm" onclick="UI.irAInicio()">Volver</button>
           </div>
           <div id="histKpis" class="zone-summary"></div>
           <div class="field" style="margin-top:10px;">
@@ -874,7 +881,7 @@
       <section id="cuentaOverlay" class="screen profile-screen hidden">
         <div class="profile-page" id="accountSheet">
           <div class="profile-topbar">
-            <button type="button" class="btn btn-ghost btn-sm profile-back-btn" onclick="UI.goToScreen(1)">
+            <button type="button" class="btn btn-ghost btn-sm profile-back-btn" onclick="UI.irAInicio()">
               <svg class="ico-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
                 stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="15 18 9 12 15 6" />
@@ -1100,9 +1107,21 @@
 
     </div><!-- /screens -->
 
+    <!-- Banner flotante persistente de viaje activo -->
+    <div id="activeTripBanner" class="active-trip-banner hidden" role="region" aria-label="Viaje activo">
+      <div class="atb-info">
+        <span class="atb-dot" aria-hidden="true"></span>
+        <div class="atb-texts">
+          <b id="atbTitle">Viaje activo</b>
+          <span id="atbSub">En curso</span>
+        </div>
+      </div>
+      <button type="button" id="btnVerViajeActivo" class="atb-btn" onclick="UI.irAInicio()">Ver viaje</button>
+    </div>
+
     <!-- Barra de Navegación Inferior (Mockup 2: Inicio, Historial, Perfil, Más) -->
     <nav class="bottom-nav">
-      <button type="button" class="nav-btn active" data-screen="1" onclick="UI.goToScreen(1)">
+      <button type="button" class="nav-btn active" data-screen="1" onclick="UI.irAInicio()">
         <span class="nav-ico" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
             <path d="M12 3l9 7.5v10a1.5 1.5 0 0 1-1.5 1.5h-5v-6h-5v6h-5A1.5 1.5 0 0 1 3 20.5v-10L12 3z" />
@@ -1607,6 +1626,34 @@
       <div id="masModalBody" class="mas-modal-body"></div>
       <button type="button" class="btn btn-primary btn-block mas-modal-btn"
         onclick="UI.cerrarMasModal()">Entendido</button>
+    </div>
+  </div>
+
+  <!-- ============ OVERLAY: SANCIÓN POR NO-SHOW ============ -->
+  <div id="noShowModalOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="noShowModalTitle"
+    onclick="if(event.target===this)UI.ocultar('noShowModalOverlay')">
+    <div class="sheet mas-modal-sheet">
+      <div class="mas-modal-head">
+        <div class="mas-modal-title-wrap">
+          <span class="more-item-ico danger" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </span>
+          <h3 id="noShowModalTitle">Viaje cancelado por inasistencia</h3>
+        </div>
+        <button type="button" class="mas-modal-close" aria-label="Cerrar" onclick="UI.ocultar('noShowModalOverlay')">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div id="noShowModalBody" class="mas-modal-body"></div>
+      <button type="button" id="btnCerrarNoShowModal" class="btn btn-primary btn-block mas-modal-btn"
+        onclick="UI.ocultar('noShowModalOverlay')">Entendido</button>
     </div>
   </div>
 

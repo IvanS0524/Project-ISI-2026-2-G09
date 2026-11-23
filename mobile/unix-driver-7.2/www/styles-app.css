@@ -3077,3 +3077,121 @@ body.admin-mode .bottom-nav {
   color: #334155;
 }
 
+/* ============ BANNER FLOTANTE PERSISTENTE DE VIAJE ACTIVO ============ */
+.active-trip-banner {
+  position: fixed;
+  bottom: 72px;
+  left: 16px;
+  right: 16px;
+  z-index: 900;
+  max-width: 440px;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #0A2540, #0B46C4);
+  color: #FFFFFF;
+  border-radius: 16px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: 0 10px 24px rgba(10, 37, 64, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.active-trip-banner.hidden {
+  display: none !important;
+}
+
+.active-trip-banner.is-urgent {
+  background: linear-gradient(135deg, #B91C1C, #D97706);
+  border-color: #FCA5A5;
+}
+
+.atb-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.atb-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #34D399;
+  box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.24);
+  flex-shrink: 0;
+}
+
+.active-trip-banner.is-urgent .atb-dot {
+  background: #FEF08A;
+  box-shadow: 0 0 0 4px rgba(254, 240, 138, 0.3);
+}
+
+.atb-texts {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.atb-texts b {
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atb-texts span {
+  font-size: 11.8px;
+  font-weight: 600;
+  opacity: 0.92;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atb-btn {
+  background: #FFFFFF;
+  color: #0B46C4;
+  border: none;
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.active-trip-banner.is-urgent .atb-btn {
+  color: #B91C1C;
+}
+
+/* Caja de cuenta regresiva en Screen 3 y Screen 5 */
+.trip-timer-box {
+  margin-top: 12px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: #EFF6FF;
+  color: #1E40AF;
+  border: 1px solid #BFDBFE;
+  font-size: 12.8px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.trip-timer-box.hidden {
+  display: none !important;
+}
+
+.trip-timer-box.is-urgent {
+  background: #FEF2F2;
+  color: #B91C1C;
+  border-color: #FCA5A5;
+}
+
+

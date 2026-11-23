@@ -10,6 +10,90 @@ const UI = (() => {
   function mostrar(id) { const e = document.getElementById(id); if (e) e.classList.remove('hidden'); }
   function ocultar(id) { const e = document.getElementById(id); if (e) e.classList.add('hidden'); }
 
+  function pantallaPorEstadoViaje() {
+    if (typeof trip === 'undefined' || !trip || typeof ESTADOS === 'undefined') return 1;
+    const est = trip.estado;
+    if (est === ESTADOS.BUSCANDO) return 2;
+    if (est === ESTADOS.ASIGNADO) return 3;
+    if (est === ESTADOS.EN_CAMINO) return 4;
+    if (est === ESTADOS.LLEGO) return 5;
+    if (est === ESTADOS.EN_CURSO) return 6;
+    if (est === ESTADOS.COMPLETADO) return 7;
+    return 1;
+  }
+
+  function formatoSegBanner(seg) {
+    const n = Math.max(0, Math.ceil(Number(seg) || 0));
+    const mm = String(Math.floor(n / 60)).padStart(2, '0');
+    const ss = String(n % 60).padStart(2, '0');
+    return `${mm}:${ss}`;
+  }
+
+  function actualizarBannerViajeActivo() {
+    const banner = document.getElementById('activeTripBanner');
+    if (!banner) return;
+    const autenticado = document.body.classList.contains('auth-ok') && !document.body.classList.contains('admin-mode');
+    if (!autenticado || typeof trip === 'undefined' || !trip || typeof ESTADOS === 'undefined') {
+      banner.classList.add('hidden');
+      banner.classList.remove('is-urgent');
+      return;
+    }
+
+    const est = trip.estado;
+    const activosBanner = [ESTADOS.ASIGNADO, ESTADOS.EN_CAMINO, ESTADOS.LLEGO, ESTADOS.EN_CURSO, ESTADOS.COMPLETADO];
+    const pantallaViaje = pantallaPorEstadoViaje();
+    const visible = activosBanner.includes(est) && Number(pantalla) !== 0 && Number(pantalla) !== pantallaViaje;
+
+    if (!visible) {
+      banner.classList.add('hidden');
+      banner.classList.remove('is-urgent');
+      return;
+    }
+
+    const titleEl = document.getElementById('atbTitle');
+    const subEl = document.getElementById('atbSub');
+    const cond = (trip.oferta && trip.oferta.conductor) ? trip.oferta.conductor : 'Conductor';
+    const dest = (trip.destino && trip.destino.nombre) ? trip.destino.nombre : 'Destino';
+
+    let titulo = 'Viaje activo';
+    let subtitulo = 'En curso';
+    let urgente = false;
+
+    if (est === ESTADOS.ASIGNADO) {
+      titulo = 'Confirma tu viaje';
+      subtitulo = trip.timeoutRestanteSeg != null
+        ? `Tiempo restante: ${formatoSegBanner(trip.timeoutRestanteSeg)}`
+        : `${cond} asignado`;
+    } else if (est === ESTADOS.EN_CAMINO) {
+      const cdEl = document.getElementById('cCountdown');
+      const cdTxt = cdEl ? cdEl.textContent.trim() : '';
+      titulo = 'Conductor en camino';
+      subtitulo = `${cond}${cdTxt && cdTxt !== '--:--' ? ' · ' + cdTxt : ''}`;
+    } else if (est === ESTADOS.LLEGO) {
+      titulo = '¡Tu conductor ha llegado!';
+      subtitulo = trip.timeoutRestanteSeg != null
+        ? `Tiempo de espera: ${formatoSegBanner(trip.timeoutRestanteSeg)}`
+        : `${cond} te espera en origen`;
+      urgente = trip.timeoutRestanteSeg != null && Number(trip.timeoutRestanteSeg) <= 15;
+    } else if (est === ESTADOS.EN_CURSO) {
+      titulo = 'Viaje en curso';
+      subtitulo = `Hacia ${dest}`;
+    } else if (est === ESTADOS.COMPLETADO) {
+      titulo = 'Viaje finalizado · Pago pendiente';
+      subtitulo = 'Toca para confirmar pago';
+    }
+
+    if (titleEl) titleEl.textContent = titulo;
+    if (subEl) subEl.textContent = subtitulo;
+    banner.classList.toggle('is-urgent', urgente);
+    banner.classList.remove('hidden');
+  }
+
+  function irAInicio() {
+    const p = pantallaPorEstadoViaje();
+    goToScreen(p > 1 ? p : 1);
+  }
+
   function ocultarTarjetasViajeAjenas() {
     const s11 = document.getElementById('screen11');
     if (s11) s11.classList.remove('active');
@@ -29,7 +113,7 @@ const UI = (() => {
     document.body.classList.toggle('on-login', Number(n) === 0);
     ocultar('masInfoOverlay');
     if (Number(n) === 0) {
-      ['cuentaOverlay', 'pickerOverlay', 'origenOverlay', 'cancelOverlay', 'masInfoOverlay'].forEach(ocultar);
+      ['cuentaOverlay', 'pickerOverlay', 'origenOverlay', 'cancelOverlay', 'masInfoOverlay', 'noShowModalOverlay'].forEach(ocultar);
     }
     const co = document.getElementById('cuentaOverlay');
     if (co && Number(n) !== 12) {
@@ -51,7 +135,8 @@ const UI = (() => {
       try { window.scrollTo(0, 0); } catch (_) {}
     }
     document.querySelectorAll('.nav-btn').forEach(b => {
-      b.classList.toggle('active', String(b.dataset.screen) === String(n));
+      const esInicio = String(b.dataset.screen) === '1' && Number(n) >= 1 && Number(n) <= 8;
+      b.classList.toggle('active', esInicio || String(b.dataset.screen) === String(n));
     });
     if (n === 10) renderHistorial();
     if (n === 11 && typeof VIAJE !== 'undefined') { try { VIAJE.sincronizar(); } catch (_) {} }
@@ -61,6 +146,7 @@ const UI = (() => {
       setTimeout(() => { try { MAPA.mostrarRuta(mapId, barId, trip.origen, trip.destino); } catch (_) {} }, 60);
     }
     if (typeof MAPA !== 'undefined') setTimeout(() => { try { MAPA.invalidar(); } catch (_) {} }, 150);
+    actualizarBannerViajeActivo();
   }
 
   function atras() {
@@ -392,6 +478,7 @@ const UI = (() => {
       sincronizarPerfilDesdeAws(s.id_usuario);
       sincronizarHistorialDesdeAws(s.id_usuario);
     }
+    actualizarBannerViajeActivo();
   }
 
   function cerrarCuenta() {
@@ -401,7 +488,8 @@ const UI = (() => {
       co.classList.remove('active');
     }
     if (pantalla === 12) {
-      goToScreen(1, true);
+      const p = pantallaPorEstadoViaje();
+      goToScreen(p > 1 ? p : 1, true);
     }
   }
 
@@ -497,6 +585,11 @@ const UI = (() => {
     if (ra) ra.innerHTML = '<span>Ruta por carretera</span><span class="badge-osrm">OSRM · OSM</span>';
     const cb = document.getElementById('btnConfirmarCancel'); if (cb) cb.classList.remove('hidden');
     const cc = document.getElementById('cancelConfirm'); if (cc) cc.classList.add('hidden');
+    const atb = document.getElementById('assignedTimeoutBox');
+    if (atb) { atb.classList.add('hidden'); atb.classList.remove('is-urgent'); }
+    const ltb = document.getElementById('arrivedTimeoutBox');
+    if (ltb) { ltb.classList.add('hidden'); ltb.classList.remove('is-urgent'); }
+    actualizarBannerViajeActivo();
   }
 
   /* ---------- Pestaña Más: modales informativos y cierre de sesión ---------- */
@@ -594,7 +687,8 @@ const UI = (() => {
     if (c) c.textContent = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
   }
 
-  return { goToScreen, atras, mostrar, ocultar, setNotice, actualizarBadgeUsuario, renderFrecuentes,
+  return { goToScreen, irAInicio, pantallaPorEstadoViaje, actualizarBannerViajeActivo,
+    atras, mostrar, ocultar, setNotice, actualizarBadgeUsuario, renderFrecuentes,
     renderHistorial, sincronizarHistorialDesdeAws, limpiarHistorialDOM, limpiarHistorial, abrirCuenta, cerrarCuenta, guardarPerfil, limpiarUIviaje, reloj,
     abrirMasModal, cerrarMasModal, cerrarSesion,
     get pantalla() { return pantalla; } };
