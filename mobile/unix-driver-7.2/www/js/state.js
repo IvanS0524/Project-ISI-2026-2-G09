@@ -15,6 +15,7 @@ const ORIGEN_SUGERIDO = (window.UNIX_CONFIG && UNIX_CONFIG.origenSugerido) ||
 let COMISION_PCT = 0.10;
 const LS_HIST_LEGACY = 'unixdriver.historial.v2';
 const LS_HIST_PREFIX = 'unixdriver.historial.v3.';
+const LS_SANCIONES_PREFIX = 'unixdriver.sanciones.v1.';
 
 const ESTADOS = {
   INICIAL: 'solicitud_inicial',
@@ -69,6 +70,8 @@ function nuevoTrip() {
     ofertas: [],
     oferta: null,
     etaMin: 0,
+    timeoutTipo: null,
+    timeoutRestanteSeg: null,
     motivoCancelacion: null,
     pago: null,
     creado: new Date().toISOString()
@@ -263,6 +266,84 @@ if (typeof window !== 'undefined') {
   window.claveHistorialUsuario = claveHistorialUsuario;
   window.limpiarHistorialEnMemoria = limpiarHistorialEnMemoria;
   window.reemplazarHistorial = reemplazarHistorial;
+}
+
+/* --- Sanciones / Strikes por No-Show aislados por id_usuario --- */
+function claveSancionesUsuario(idUsuario) {
+  const idRaw = (idUsuario === undefined) ? obtenerIdUsuarioAutenticado() : idUsuario;
+  if (idRaw == null || idRaw === '') return null;
+  const n = Number(idRaw);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return LS_SANCIONES_PREFIX + n;
+}
+
+function leerSancionesUsuario(idUsuario) {
+  const clave = claveSancionesUsuario(idUsuario);
+  if (!clave) return { strikes: 0, bloqueadoHasta: null };
+  try {
+    const raw = localStorage.getItem(clave);
+    if (!raw) return { strikes: 0, bloqueadoHasta: null };
+    const parsed = JSON.parse(raw);
+    const strikes = Number(parsed && parsed.strikes) || 0;
+    const bloqueadoHasta = (parsed && parsed.bloqueadoHasta != null && Number.isFinite(Number(parsed.bloqueadoHasta)))
+      ? Number(parsed.bloqueadoHasta)
+      : null;
+    return { strikes, bloqueadoHasta };
+  } catch (_) {
+    return { strikes: 0, bloqueadoHasta: null };
+  }
+}
+
+function guardarSancionesUsuario(datos, idUsuario) {
+  const clave = claveSancionesUsuario(idUsuario);
+  if (!clave) return null;
+  const limpio = {
+    strikes: Math.max(0, Number(datos && datos.strikes) || 0),
+    bloqueadoHasta: (datos && datos.bloqueadoHasta != null && Number.isFinite(Number(datos.bloqueadoHasta)))
+      ? Number(datos.bloqueadoHasta)
+      : null
+  };
+  try { localStorage.setItem(clave, JSON.stringify(limpio)); } catch (_) {}
+  try { if (typeof STORE !== 'undefined' && typeof STORE.setJSON === 'function') STORE.setJSON(clave, limpio); } catch (_) {}
+  return limpio;
+}
+
+function verificarBloqueoUsuario(idUsuario) {
+  const id = (idUsuario === undefined) ? obtenerIdUsuarioAutenticado() : idUsuario;
+  const s = leerSancionesUsuario(id);
+  const ahora = Date.now();
+  if (s.bloqueadoHasta && s.bloqueadoHasta > ahora) {
+    return { bloqueado: true, restanteMs: s.bloqueadoHasta - ahora, strikes: s.strikes, bloqueadoHasta: s.bloqueadoHasta };
+  }
+  if (s.bloqueadoHasta && s.bloqueadoHasta <= ahora) {
+    guardarSancionesUsuario({ strikes: 0, bloqueadoHasta: null }, id);
+    return { bloqueado: false, restanteMs: 0, strikes: 0, bloqueadoHasta: null };
+  }
+  return { bloqueado: false, restanteMs: 0, strikes: s.strikes, bloqueadoHasta: null };
+}
+
+function registrarStrikeNoShow(idUsuario, maxStrikes = 3, bloqueoMin = 5) {
+  const id = (idUsuario === undefined) ? obtenerIdUsuarioAutenticado() : idUsuario;
+  const actual = leerSancionesUsuario(id);
+  const ahora = Date.now();
+  const baseStrikes = (actual.bloqueadoHasta && actual.bloqueadoHasta <= ahora) ? 0 : actual.strikes;
+  const nuevosStrikes = baseStrikes + 1;
+  const bloqueado = nuevosStrikes >= Number(maxStrikes || 3);
+  const bloqueadoHasta = bloqueado ? (ahora + Number(bloqueoMin || 5) * 60 * 1000) : null;
+  guardarSancionesUsuario({ strikes: nuevosStrikes, bloqueadoHasta }, id);
+  return {
+    strikes: nuevosStrikes,
+    maxStrikes: Number(maxStrikes || 3),
+    bloqueado,
+    bloqueadoHasta
+  };
+}
+
+if (typeof window !== 'undefined') {
+  window.claveSancionesUsuario = claveSancionesUsuario;
+  window.leerSancionesUsuario = leerSancionesUsuario;
+  window.registrarStrikeNoShow = registrarStrikeNoShow;
+  window.verificarBloqueoUsuario = verificarBloqueoUsuario;
 }
 
 /* --- Dinero y formato --- */

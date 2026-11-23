@@ -49,8 +49,40 @@ const mockViajes = [
     }
   }
 ];
+const patchViajesLog = [];
 w.fetch = async (url, opts = {}) => {
   const u = String(url);
+  if (u.includes('router.project-osrm.org')) {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        code: 'Ok',
+        routes: [{ distance: 4200, duration: 540, geometry: { type: 'LineString', coordinates: [[-75.5, 10.4], [-75.53, 10.42]] } }]
+      })
+    };
+  }
+  if (u.endsWith('/busquedas/') && (opts.method || 'GET').toUpperCase() === 'POST') {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        id_busqueda: 301,
+        ofertas: [
+          { id_oferta: 701, precio_estimado: 14000, tiempo_estimado: 4, plataforma: { nombre: 'Uber' }, conductor: { nombre: 'Carlos M.', calificacion: 4.9 }, vehiculo: { marca: 'TVS', modelo: 'Raider', placa: 'CTG-123', tipo: 'moto' } }
+        ]
+      })
+    };
+  }
+  if (u.endsWith('/viajes/solicitar') && (opts.method || 'GET').toUpperCase() === 'POST') {
+    return { ok: true, status: 201, json: async () => ({ id_viaje: 888, estado: 'SOLICITADO' }) };
+  }
+  const mViajeEst = u.match(/\/viajes\/(\d+)\/estado$/);
+  if (mViajeEst && (opts.method || 'GET').toUpperCase() === 'PATCH') {
+    const body = JSON.parse(opts.body || '{}');
+    patchViajesLog.push({ id_viaje: Number(mViajeEst[1]), ...body });
+    return { ok: true, status: 200, json: async () => ({ id_viaje: Number(mViajeEst[1]), estado: body.estado, precio_final: body.precio_final }) };
+  }
   if (u.endsWith('/usuarios/registro')) {
     const body = JSON.parse(opts.body || '{}');
     const correo = String(body.correo || '').toLowerCase();
@@ -332,6 +364,69 @@ t('usuario #2 sin viajes mantiene #lastTripBox oculto',
   !!$('lastTripBox') && $('lastTripBox').classList.contains('hidden'));
 t('historial aislado del usuario #1 se conserva intacto en su propia clave v3.1',
   JSON.parse(w.localStorage.getItem('unixdriver.historial.v3.1') || '[]').length === 2);
+
+// 9) Retorno automático al viaje activo, Banner flotante, Expiración SOLICITADO y No-Show con Sanción
+w.eval('AUTH.cerrarSesion()'); await new Promise(r => setTimeout(r, 40));
+$('aEmail').value = 'luis@correo.com'; $('aPass').value = 'clave123'; click($('authBtn'));
+await new Promise(r => setTimeout(r, 200));
+w.eval('UI.goToScreen(1)'); await new Promise(r => setTimeout(r, 40));
+w.eval("PICKER.elegir('Bocagrande')"); await new Promise(r => setTimeout(r, 250));
+click($('btnBuscar')); await new Promise(r => setTimeout(r, 1100));
+t('UI.pantallaPorEstadoViaje mapea BUSCANDO -> 2', w.eval('UI.pantallaPorEstadoViaje()') === 2);
+const offerEl = d.querySelector('#offers .offer');
+t('oferta disponible lista para seleccionar', !!offerEl);
+click(offerEl); await new Promise(r => setTimeout(r, 150));
+t('ASIGNADO activa Screen 3, pantallaPorEstadoViaje()=3 y #assignedTimeoutBox visible',
+  $('screen3').classList.contains('active') && w.eval('UI.pantallaPorEstadoViaje()') === 3 && !$('assignedTimeoutBox').classList.contains('hidden'));
+// Cambiar a Historial: aparece banner flotante persistente y tab Inicio regresa a Screen 3
+w.eval('UI.goToScreen(10)'); await new Promise(r => setTimeout(r, 60));
+t('banner flotante #activeTripBanner visible al navegar a otra pestaña durante viaje activo',
+  !$('activeTripBanner').classList.contains('hidden') && /Confirma tu viaje/.test($('atbTitle').textContent));
+click($('btnVerViajeActivo')); await new Promise(r => setTimeout(r, 60));
+t('botón "Ver viaje" del banner regresa exactamente a la pantalla del viaje activo (Screen 3)',
+  $('screen3').classList.contains('active') && $('activeTripBanner').classList.contains('hidden'));
+w.eval('UI.goToScreen(13)'); await new Promise(r => setTimeout(r, 40));
+click(d.querySelector('.bottom-nav .nav-btn[data-screen="1"]')); await new Promise(r => setTimeout(r, 40));
+t('tocar tab Inicio en barra inferior regresa automáticamente al viaje activo (Screen 3)',
+  $('screen3').classList.contains('active'));
+// Probar expiración automática sin sanción en ASIGNADO
+w.eval('FLOW.expirarSolicitudPorTimeout()'); await new Promise(r => setTimeout(r, 80));
+const ultimoPatchExp = patchViajesLog[patchViajesLog.length - 1];
+const histTrasExp = JSON.parse(w.localStorage.getItem('unixdriver.historial.v3.1') || '[]');
+t('expiración SOLICITADO envía CANCELADO con $0, guarda historial sin sanción, oculta banner y vuelve a Screen 1',
+  !!ultimoPatchExp && ultimoPatchExp.estado === 'CANCELADO' && Number(ultimoPatchExp.precio_final) === 0 &&
+  $('screen1').classList.contains('active') && $('activeTripBanner').classList.contains('hidden') &&
+  histTrasExp[0] && /Expirado automáticamente por falta de confirmación/.test(histTrasExp[0].motivo));
+
+// Probar flujo hasta LLEGO (Screen 5), alerta <= 15s en banner y No-Show con sanción $ 3.000 + 3 strikes
+w.eval("PICKER.elegir('Bocagrande')"); await new Promise(r => setTimeout(r, 250));
+click($('btnBuscar')); await new Promise(r => setTimeout(r, 1100));
+click(d.querySelector('#offers .offer')); await new Promise(r => setTimeout(r, 120));
+click(d.querySelector('#screen3 .btn-solicitar-viaje')); await new Promise(r => setTimeout(r, 120));
+t('solicitar viaje pasa a EN_CAMINO (Screen 4) y oculta #assignedTimeoutBox',
+  $('screen4').classList.contains('active') && $('assignedTimeoutBox').classList.contains('hidden') && w.eval('UI.pantallaPorEstadoViaje()') === 4);
+w.eval('FLOW.llegarConductor()'); await new Promise(r => setTimeout(r, 80));
+t('LLEGO abre Screen 5, mapea pantalla 5 y muestra #arrivedTimeoutBox',
+  $('screen5').classList.contains('active') && w.eval('UI.pantallaPorEstadoViaje()') === 5 && !$('arrivedTimeoutBox').classList.contains('hidden'));
+w.eval('tripActual().timeoutRestanteSeg = 10; UI.goToScreen(12);'); await new Promise(r => setTimeout(r, 40));
+t('banner en LLEGO con < 15s se resalta en estado alerta (.is-urgent)',
+  !$('activeTripBanner').classList.contains('hidden') && $('activeTripBanner').classList.contains('is-urgent'));
+w.eval('FLOW.cancelarPorNoShow()'); await new Promise(r => setTimeout(r, 80));
+const ultimoPatchNoShow = patchViajesLog[patchViajesLog.length - 1];
+const histTrasNoShow = JSON.parse(w.localStorage.getItem('unixdriver.historial.v3.1') || '[]');
+const sanciones1 = JSON.parse(w.localStorage.getItem('unixdriver.sanciones.v1.1') || '{}');
+t('No-Show envía CANCELADO con sanción $3.000, guarda historial, registra strike 1/3 y abre modal informativo',
+  !!ultimoPatchNoShow && ultimoPatchNoShow.estado === 'CANCELADO' && Number(ultimoPatchNoShow.precio_final) === 3000 &&
+  !$('noShowModalOverlay').classList.contains('hidden') && sanciones1.strikes === 1 &&
+  histTrasNoShow[0] && Number(histTrasNoShow[0].tarifa) === 3000 && /No-Show/i.test(histTrasNoShow[0].motivo));
+click($('btnCerrarNoShowModal')); await new Promise(r => setTimeout(r, 30));
+// Registrar 2 strikes adicionales para verificar bloqueo al 3ro
+w.eval('registrarStrikeNoShow(1, 3, 5); registrarStrikeNoShow(1, 3, 5);');
+w.eval("PICKER.elegir('Bocagrande')"); await new Promise(r => setTimeout(r, 250));
+click($('btnBuscar')); await new Promise(r => setTimeout(r, 60));
+t('al alcanzar 3 strikes de No-Show bloquea nuevas solicitudes mostrando tiempo de sanción',
+  $('screen1').classList.contains('active') && /suspendida temporalmente/i.test($('searchNotice').textContent));
+w.localStorage.removeItem('unixdriver.sanciones.v1.1');
 
 t('errores JS: ' + errs.length, errs.length === 0, errs.slice(0,2).join(' | '));
 console.log(`TOTAL ${pass}/${pass+fail} PASS`);

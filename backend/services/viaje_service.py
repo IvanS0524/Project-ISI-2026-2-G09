@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional
 
@@ -13,6 +13,8 @@ from backend.database.repository import (
 )
 from backend.models.viaje import Viaje
 from backend.schemas.viaje import ViajeActualizarEstado, ViajeCrear
+
+TIMEOUT_VIAJE_SOLICITADO_MIN = 5
 
 # Máquina de estados del viaje: estado actual -> estados destino permitidos.
 TRANSICIONES_VIAJE: dict[str, set[str]] = {
@@ -72,6 +74,44 @@ def obtener_viaje(db: Session, id_viaje: int) -> Viaje:
     return viaje
 
 
+def limpiar_viajes_solicitados_huerfanos(
+    db: Session,
+    viajes: list[Viaje],
+    minutos_limite: int = TIMEOUT_VIAJE_SOLICITADO_MIN,
+) -> list[Viaje]:
+    """
+    Marca automáticamente como CANCELADO (precio_final = 0.00) cualquier viaje
+    huérfano en estado SOLICITADO con más de `minutos_limite` minutos desde inicio.
+    """
+    limite = timedelta(minutes=minutos_limite)
+    actualizados: list[Viaje] = []
+
+    for viaje in viajes:
+        if viaje.estado != "SOLICITADO" or viaje.fecha_hora_inicio is None:
+            continue
+        ahora_cmp = (
+            datetime.now(viaje.fecha_hora_inicio.tzinfo)
+            if viaje.fecha_hora_inicio.tzinfo is not None
+            else datetime.now()
+        )
+        if (ahora_cmp - viaje.fecha_hora_inicio) > limite:
+            viaje.estado = "CANCELADO"
+            viaje.precio_final = Decimal("0.00")
+            viaje.fecha_hora_fin = (
+                ahora_cmp
+                if ahora_cmp >= viaje.fecha_hora_inicio
+                else viaje.fecha_hora_inicio
+            )
+            actualizados.append(viaje)
+
+    if actualizados:
+        db.commit()
+        for viaje in actualizados:
+            db.refresh(viaje)
+
+    return viajes
+
+
 def consultar_historial_usuario(db: Session, id_usuario: int) -> list[Viaje]:
     """Caso de Uso DSS06P: Lista el historial de viajes realizados por un pasajero."""
     usuario = usuario_repository.obtener_por_id(db, id_usuario)
@@ -80,7 +120,8 @@ def consultar_historial_usuario(db: Session, id_usuario: int) -> list[Viaje]:
             status_code=status.HTTP_404_NOT_FOUND,
             detail="El usuario consultado no existe.",
         )
-    return viaje_repository.listar_viajes_por_usuario(db, id_usuario)
+    viajes = viaje_repository.listar_viajes_por_usuario(db, id_usuario)
+    return limpiar_viajes_solicitados_huerfanos(db, viajes)
 
 
 def listar_viajes_sistema(

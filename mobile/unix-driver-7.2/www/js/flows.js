@@ -16,6 +16,12 @@ const CONDUCTORES = ['Carlos M.', 'Andrés R.', 'Miguel P.', 'Laura S.', 'David 
 const VEH_MOTO = ['TVS Raider', 'Boxer CT', 'Pulsar 125', 'Honda CB125', 'Yamaha FZ-S', 'Suzuki Gixxer'];
 const VEH_CARRO = ['Kia Picanto', 'Renault Logan', 'Chevrolet Onix', 'Toyota Corolla', 'Mazda 2', 'Nissan Versa'];
 
+const TIMEOUT_SOLICITADO_SEG = 60;      // tiempo máximo para confirmar en Screen 3 antes de expirar
+const TIMEOUT_ESPERA_CONDUCTOR_SEG = 45; // tiempo de cortesía cuando el conductor llega en Screen 5
+const TARIFA_SANCION_NOSHOW = 3000;      // cargo en COP por inasistencia cuando el conductor ya llegó
+const MAX_STRIKES_NOSHOW = 3;
+const BLOQUEO_STRIKES_MIN = 5;
+
 const FLOW = (() => {
   let motivoSel = null;
   let comisionActivaPct = COMISION_PCT;
@@ -31,6 +37,12 @@ const FLOW = (() => {
   };
   const $ = id => document.getElementById(id);
   const setText = (id, v) => { const e = $(id); if (e) e.textContent = v; };
+  const formatoMMSS = seg => {
+    const s = Math.max(0, Math.ceil(Number(seg) || 0));
+    const mm = String(Math.floor(s / 60)).padStart(2, '0');
+    const ss = String(s % 60).padStart(2, '0');
+    return `${mm}:${ss}`;
+  };
   const nombreOrigen = () => (trip && trip.origen ? trip.origen.nombre : 'Origen');
   const nombreDestino = () => (trip && trip.destino ? trip.destino.nombre : 'Destino');
   const SVG_SEARCH_ICON = '<svg class="ico-svg" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.2" y2="16.2"/></svg>';
@@ -267,6 +279,19 @@ const FLOW = (() => {
 
   /* ============ 3. Buscar conductores (Conectado a POST /busquedas/ en AWS) ============ */
   function buscarViajes() {
+    const idUsr = obtenerIdUsuarioActivo();
+    if (idUsr && typeof verificarBloqueoUsuario === 'function') {
+      const bloqueo = verificarBloqueoUsuario(idUsr);
+      if (bloqueo && bloqueo.bloqueado) {
+        const rest = formatoMMSS(Math.ceil(bloqueo.restanteMs / 1000));
+        UI.setNotice(
+          'searchNotice',
+          `Cuenta suspendida temporalmente por inasistencias reiteradas (${bloqueo.strikes}/${MAX_STRIKES_NOSHOW}). Podrás solicitar un viaje en ${rest}.`,
+          'error'
+        );
+        return;
+      }
+    }
     const s = estadoActual();
     if (!trip || ![ESTADOS.INICIAL, ESTADOS.CANCELADO].includes(s)) {
       UI.setNotice('searchNotice', 'Hay una solicitud en curso. Termínala o cancélala antes de crear otra.', 'error');
@@ -431,6 +456,106 @@ const FLOW = (() => {
   }
 
   /* ============ 4. Conductor asignado (Conectado a POST /viajes/solicitar) ============ */
+  function pintarTimerSolicitado(seg) {
+    const box = $('assignedTimeoutBox');
+    const txt = $('assignedTimeoutText');
+    if (txt) txt.textContent = `Confirma tu viaje en ${formatoMMSS(seg)} o se cancelará automáticamente`;
+    if (box) {
+      box.classList.remove('hidden');
+      box.classList.toggle('is-urgent', Number(seg) <= 15);
+    }
+  }
+
+  function iniciarTimerSolicitado(segundos = TIMEOUT_SOLICITADO_SEG) {
+    limpiarTimers();
+    if (!trip) return;
+    const rid = trip.requestId;
+    let restante = Math.max(1, Number(segundos) || TIMEOUT_SOLICITADO_SEG);
+    trip.timeoutTipo = 'solicitado';
+    trip.timeoutRestanteSeg = restante;
+    pintarTimerSolicitado(restante);
+    if (typeof UI !== 'undefined' && typeof UI.actualizarBannerViajeActivo === 'function') {
+      UI.actualizarBannerViajeActivo();
+    }
+
+    intervalo(() => {
+      if (!trip || trip.requestId !== rid || trip.estado !== ESTADOS.ASIGNADO) return;
+      restante -= 1;
+      trip.timeoutRestanteSeg = Math.max(0, restante);
+      pintarTimerSolicitado(trip.timeoutRestanteSeg);
+      if (typeof UI !== 'undefined' && typeof UI.actualizarBannerViajeActivo === 'function') {
+        UI.actualizarBannerViajeActivo();
+      }
+      if (restante <= 0) {
+        expirarSolicitudPorTimeout();
+      }
+    }, 1000);
+  }
+
+  function expirarSolicitudPorTimeout() {
+    if (!trip || trip.estado !== ESTADOS.ASIGNADO) return;
+    limpiarTimers();
+    const idViaje = trip.id_viaje;
+    const idUsuarioActivo = obtenerIdUsuarioActivo();
+    const orig = nombreOrigen();
+    const dest = nombreDestino();
+    const catDest = trip.destino ? trip.destino.categoria : null;
+    const idDest = trip.destino ? trip.destino.id : null;
+    const oriDir = trip.origen ? (trip.origen.direccion || '') : '';
+    const oriLat = trip.origen ? trip.origen.lat : null;
+    const oriLon = trip.origen ? trip.origen.lon : null;
+    const veh = trip.vehiculo;
+    const tar = trip.tarifa;
+    const cond = trip.oferta ? trip.oferta.conductor : null;
+    const plat = trip.oferta ? trip.oferta.plataforma : null;
+    const km = trip.rutaKm;
+    const durMin = trip.rutaMin || null;
+    const rf = trip.rutaFuente || null;
+
+    if (idViaje) actualizarEstadoViajeBackend(idViaje, 'CANCELADO', 0);
+
+    if (idUsuarioActivo) {
+      guardarEnHistorial({
+        id: idViaje ? ('V-' + idViaje) : ('V-' + Date.now().toString(36).toUpperCase()),
+        id_usuario: idUsuarioActivo,
+        fecha: ahoraTexto(),
+        origen: orig,
+        origen_direccion: oriDir,
+        origen_lat: oriLat,
+        origen_lon: oriLon,
+        destino: dest,
+        destinoId: idDest,
+        categoria: catDest,
+        vehiculo: veh,
+        tarifa: 0,
+        comision: 0,
+        estado: 'cancelado',
+        conductor: cond,
+        plataforma: plat,
+        metodo: null,
+        folio: null,
+        motivo: 'Expirado automáticamente por falta de confirmación',
+        estadoAnterior: ESTADOS.ASIGNADO,
+        km,
+        duracionMin: durMin,
+        rutaFuente: rf
+      }, idUsuarioActivo);
+    }
+
+    trip.estado = ESTADOS.CANCELADO;
+    UI.ocultar('cancelOverlay');
+    resetTripState();
+    if (typeof UI !== 'undefined' && typeof UI.actualizarBannerViajeActivo === 'function') {
+      UI.actualizarBannerViajeActivo();
+    }
+    UI.goToScreen(1, true);
+    UI.setNotice(
+      'searchNotice',
+      'La solicitud expiró automáticamente porque no confirmaste el viaje a tiempo (sin sanción).',
+      'error'
+    );
+  }
+
   async function seleccionarOferta(i) {
     if (!trip || trip.estado !== ESTADOS.BUSCANDO) return;
     const o = trip.ofertas && trip.ofertas[i];
@@ -492,11 +617,17 @@ const FLOW = (() => {
     setText('aPrecio', money(o.precio));
     UI.setNotice('assignedNotice', '');
     UI.goToScreen(3);
+    iniciarTimerSolicitado(TIMEOUT_SOLICITADO_SEG);
   }
 
   /* ============ 5. Conductor en camino ============ */
   function conductorEnCamino() {
     if (!trip || trip.estado !== ESTADOS.ASIGNADO) return;
+    limpiarTimers();
+    trip.timeoutTipo = null;
+    trip.timeoutRestanteSeg = null;
+    const atb = $('assignedTimeoutBox');
+    if (atb) { atb.classList.add('hidden'); atb.classList.remove('is-urgent'); }
     trip.estado = ESTADOS.EN_CAMINO;
     if (trip.id_viaje) actualizarEstadoViajeBackend(trip.id_viaje, 'ACEPTADO');
 
@@ -516,6 +647,9 @@ const FLOW = (() => {
       setText('cCountdown', mm + ':' + ss);
       const p = $('cProgress');
       if (p) p.style.width = Math.min(100, Math.round(((total - restante) / total) * 100)) + '%';
+      if (typeof UI !== 'undefined' && typeof UI.actualizarBannerViajeActivo === 'function') {
+        UI.actualizarBannerViajeActivo();
+      }
     };
     pintar();
     intervalo(() => {
@@ -524,6 +658,124 @@ const FLOW = (() => {
       pintar();
       if (restante <= 0) llegarConductor();
     }, pasoMinMs);
+  }
+
+  function pintarTimerEsperaConductor(seg) {
+    const box = $('arrivedTimeoutBox');
+    const txt = $('arrivedTimeoutText');
+    if (txt) txt.textContent = `Tiempo de espera del conductor: ${formatoMMSS(seg)}`;
+    if (box) {
+      box.classList.remove('hidden');
+      box.classList.toggle('is-urgent', Number(seg) <= 15);
+    }
+  }
+
+  function iniciarTimerEsperaConductor(segundos = TIMEOUT_ESPERA_CONDUCTOR_SEG) {
+    limpiarTimers();
+    if (!trip) return;
+    const rid = trip.requestId;
+    let restante = Math.max(1, Number(segundos) || TIMEOUT_ESPERA_CONDUCTOR_SEG);
+    trip.timeoutTipo = 'espera';
+    trip.timeoutRestanteSeg = restante;
+    pintarTimerEsperaConductor(restante);
+    if (typeof UI !== 'undefined' && typeof UI.actualizarBannerViajeActivo === 'function') {
+      UI.actualizarBannerViajeActivo();
+    }
+
+    intervalo(() => {
+      if (!trip || trip.requestId !== rid || trip.estado !== ESTADOS.LLEGO) return;
+      restante -= 1;
+      trip.timeoutRestanteSeg = Math.max(0, restante);
+      pintarTimerEsperaConductor(trip.timeoutRestanteSeg);
+      if (typeof UI !== 'undefined' && typeof UI.actualizarBannerViajeActivo === 'function') {
+        UI.actualizarBannerViajeActivo();
+      }
+      if (restante <= 0) {
+        cancelarPorNoShow();
+      }
+    }, 1000);
+  }
+
+  function cancelarPorNoShow() {
+    if (!trip || trip.estado !== ESTADOS.LLEGO) return;
+    limpiarTimers();
+    const idViaje = trip.id_viaje;
+    const idUsuarioActivo = obtenerIdUsuarioActivo();
+    const orig = nombreOrigen();
+    const dest = nombreDestino();
+    const catDest = trip.destino ? trip.destino.categoria : null;
+    const idDest = trip.destino ? trip.destino.id : null;
+    const oriDir = trip.origen ? (trip.origen.direccion || '') : '';
+    const oriLat = trip.origen ? trip.origen.lat : null;
+    const oriLon = trip.origen ? trip.origen.lon : null;
+    const veh = trip.vehiculo;
+    const cond = trip.oferta ? trip.oferta.conductor : null;
+    const plat = trip.oferta ? trip.oferta.plataforma : null;
+    const km = trip.rutaKm;
+    const durMin = trip.rutaMin || null;
+    const rf = trip.rutaFuente || null;
+
+    if (idViaje) actualizarEstadoViajeBackend(idViaje, 'CANCELADO', TARIFA_SANCION_NOSHOW);
+
+    if (idUsuarioActivo) {
+      guardarEnHistorial({
+        id: idViaje ? ('V-' + idViaje) : ('V-' + Date.now().toString(36).toUpperCase()),
+        id_usuario: idUsuarioActivo,
+        fecha: ahoraTexto(),
+        origen: orig,
+        origen_direccion: oriDir,
+        origen_lat: oriLat,
+        origen_lon: oriLon,
+        destino: dest,
+        destinoId: idDest,
+        categoria: catDest,
+        vehiculo: veh,
+        tarifa: TARIFA_SANCION_NOSHOW,
+        comision: 0,
+        estado: 'cancelado',
+        conductor: cond,
+        plataforma: plat,
+        metodo: null,
+        folio: null,
+        motivo: 'Cancelación automática por inasistencia (No-Show) · Sanción: $ 3.000',
+        estadoAnterior: ESTADOS.LLEGO,
+        km,
+        duracionMin: durMin,
+        rutaFuente: rf
+      }, idUsuarioActivo);
+    }
+
+    let infoStrike = { strikes: 1, maxStrikes: MAX_STRIKES_NOSHOW, bloqueado: false };
+    if (idUsuarioActivo && typeof registrarStrikeNoShow === 'function') {
+      infoStrike = registrarStrikeNoShow(idUsuarioActivo, MAX_STRIKES_NOSHOW, BLOQUEO_STRIKES_MIN);
+    }
+
+    trip.estado = ESTADOS.CANCELADO;
+    UI.ocultar('cancelOverlay');
+    resetTripState();
+    if (typeof UI !== 'undefined' && typeof UI.actualizarBannerViajeActivo === 'function') {
+      UI.actualizarBannerViajeActivo();
+    }
+    UI.goToScreen(1, true);
+
+    const textoAviso = `Cancelación automática por no presentación (No-Show). Cargo aplicado: ${money(TARIFA_SANCION_NOSHOW)} COP · Advertencia (Strike ${infoStrike.strikes} de ${infoStrike.maxStrikes}).` +
+      (infoStrike.bloqueado ? ` Cuenta bloqueada temporalmente por ${BLOQUEO_STRIKES_MIN} min.` : '');
+    UI.setNotice('searchNotice', textoAviso, 'error');
+
+    const bodyModal = $('noShowModalBody');
+    if (bodyModal) {
+      bodyModal.innerHTML = `
+        <p>El conductor esperó en el punto de recogida hasta agotar el tiempo de cortesía y el viaje fue cancelado por <strong>inasistencia (No-Show)</strong>.</p>
+        <div class="mas-info-box">
+          <h4>Detalle de la sanción</h4>
+          <ul>
+            <li><strong>Cargo aplicado:</strong> ${money(TARIFA_SANCION_NOSHOW)} COP</li>
+            <li><strong>Advertencia registrada:</strong> Strike ${infoStrike.strikes} de ${infoStrike.maxStrikes}</li>
+            ${infoStrike.bloqueado ? `<li><strong>Bloqueo temporal:</strong> ${BLOQUEO_STRIKES_MIN} minutos sin nuevas solicitudes</li>` : ''}
+          </ul>
+        </div>`;
+    }
+    UI.mostrar('noShowModalOverlay');
   }
 
   function llegarConductor() {
@@ -538,6 +790,7 @@ const FLOW = (() => {
     setText('lPrecio', money(trip.tarifa));
     setText('lugarTexto', 'Está esperando en ' + (trip.origen.direccion || nombreOrigen()));
     UI.goToScreen(5);
+    iniciarTimerEsperaConductor(TIMEOUT_ESPERA_CONDUCTOR_SEG);
   }
 
   /* ============ 6. Viaje en curso ============ */
@@ -546,6 +799,11 @@ const FLOW = (() => {
       UI.setNotice('arrivedNotice', 'El viaje solo puede iniciarse cuando el conductor ha llegado.', 'error');
       return;
     }
+    limpiarTimers();
+    trip.timeoutTipo = null;
+    trip.timeoutRestanteSeg = null;
+    const ltb = $('arrivedTimeoutBox');
+    if (ltb) { ltb.classList.add('hidden'); ltb.classList.remove('is-urgent'); }
     trip.estado = ESTADOS.EN_CURSO;
     if (trip.id_viaje) actualizarEstadoViajeBackend(trip.id_viaje, 'EN_CURSO');
 
@@ -760,6 +1018,9 @@ const FLOW = (() => {
     trip.estado = ESTADOS.CANCELADO;
     UI.ocultar('cancelOverlay');
     resetTripState();   // origen, destino, km y precio vuelven a cero
+    if (typeof UI !== 'undefined' && typeof UI.actualizarBannerViajeActivo === 'function') {
+      UI.actualizarBannerViajeActivo();
+    }
     UI.goToScreen(1);
     UI.setNotice('searchNotice', 'Viaje cancelado. Puedes elegir un nuevo origen y destino.', 'success');
   }
@@ -768,6 +1029,7 @@ const FLOW = (() => {
     elegirOrigen, elegirDestino, seleccionarVehiculo, recalcular, actualizarPrecio,
     buscarViajes, mostrarOfertas, seleccionarOferta, conductorEnCamino, llegarConductor,
     iniciarViaje, finalizarViaje, pagar, nuevoViaje,
+    expirarSolicitudPorTimeout, cancelarPorNoShow,
     abrirCancelacion, elegirMotivo, pedirConfirmacionCancelacion, volverAlViaje,
     cerrarCancelacion, confirmarCancelacion,
     get motivo() { return motivoSel; }
